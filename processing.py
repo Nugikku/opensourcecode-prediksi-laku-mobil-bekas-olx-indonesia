@@ -1,17 +1,16 @@
 """
 Script Preprocessing Data Mobil Bekas OLX (Versi Klasifikasi & Likuiditas Penjualan)
-Pembaruan:
-1. Menghitung durasi tayang iklan dari 'created_at' asli milik penjual.
-2. Membentuk label target 'kategori_penjualan':
-   - 'Cepat'  : durasi tayang < 30 hari (unit likuid/segar).
-   - 'Lambat' : durasi tayang >= 30 hari (unit tertahan lama/kurang likuid).
-3. Rekayasa Fitur Baru:
+Penyempurnaan:
+1. Sinkronisasi atribut waktu posting ('tanggal_posting' / 'created_at').
+2. Penggabungan sinyal status terjual ('status_iklan_terjual') dengan durasi tayang:
+   - Jika status unit sudah 'Terjual' atau durasi tayang < 30 hari -> 'Cepat'
+   - Jika unit belum laku dan durasi tayang >= 30 hari -> 'Lambat'
+3. Rekayasa Fitur Prediktor:
    - 'usia_mobil'    : selisih tahun saat ini dengan tahun perakitan.
    - 'km_per_tahun'  : rata-rata kilometer per tahun (intensitas pemakaian).
    - 'tipe_penjual'  : deteksi Dealer/Showroom vs Individu dari teks deskripsi.
    - 'ada_garansi'   : deteksi garansi/sertifikasi unit dari teks deskripsi.
-4. Ekstraksi otomatis tipe model dari teks 'judul'.
-5. Penanganan rentang kilometer, imputasi median, dan pembersihan teks.
+4. Normalisasi teks menggunakan kamus slang otomotif.
 """
 
 import pandas as pd
@@ -132,7 +131,7 @@ def tentukan_transmisi(row):
     return 'manual'
 
 def hitung_durasi_hari(val):
-    """Menghitung selisih hari dari created_at penjual hingga tanggal saat ini."""
+    """Menghitung selisih hari dari waktu penayangan sampai saat ini."""
     if pd.isna(val) or str(val).strip() in ['', 'None', 'nan']:
         return None
     try:
@@ -156,16 +155,16 @@ def main():
 
     print(f"Data awal: {len(df)} baris")
     
-    # 1. Ekstraksi Fitur dari Teks (Tahun, Transmisi, Model)
+    # 1. Ekstraksi Fitur Dasar
     df['tahun'] = df.apply(cari_tahun, axis=1)
     df['transmisi'] = df.apply(tentukan_transmisi, axis=1)
     df['model'] = df['judul'].apply(ekstrak_model)
 
-    # 2. Pembersihan Angka (Harga & Jarak Tempuh)
+    # 2. Pembersihan Nilai Numerik
     df['harga'] = df['harga'].apply(bersihkan_angka_harga)
     df['jarak_tempuh'] = df['jarak_tempuh'].apply(perbaiki_jarak_tempuh)
 
-    # 3. Filter Validitas Nilai
+    # 3. Filter Validitas
     df = df.dropna(subset=['harga', 'tahun'])
     df = df[(df['harga'] >= 25_000_000) & (df['harga'] <= 2_500_000_000)]
     df = df[(df['tahun'] >= 1995) & (df['tahun'] <= 2026)]
@@ -173,49 +172,63 @@ def main():
 
     df['merek'] = df['merek'].astype(str).str.strip().str.title()
 
-    # 4. Hapus Duplikat
+    # 4. Eliminasi Duplikasi
     if 'id_iklan' in df.columns:
         df = df.drop_duplicates(subset=['id_iklan'], keep='first')
     df = df.drop_duplicates(subset=['merek', 'model', 'tahun', 'transmisi', 'jarak_tempuh', 'harga'], keep='first')
 
-    # 5. Imputasi Missing Values Jarak Tempuh
+    # 5. Imputasi Odometer
     median_global = df['jarak_tempuh'].dropna().median()
     df['jarak_tempuh'] = df.groupby('tahun')['jarak_tempuh'].transform(lambda s: s.fillna(s.median()))
     df['jarak_tempuh'] = df['jarak_tempuh'].fillna(median_global).astype(int)
 
     # ============================================================
-    # 6. FEATURE ENGINEERING (ATRIBUT BARU ARAHAN DOSEN)
+    # 6. FEATURE ENGINEERING (KLASIFIKASI & ATRIBUT BARU)
     # ============================================================
     print("Membentuk atribut baru untuk analisis penjualan & likuiditas...")
 
-    # A. Durasi Hari Tayang & Label Target Klasifikasi
-    col_waktu = 'created_at' if 'created_at' in df.columns else 'tanggal_posting'
-    if col_waktu in df.columns:
-        df['durasi_tayang_hari'] = df[col_waktu].apply(hitung_durasi_hari)
-        # Jika ada sebagian data lama tanpa created_at, imputasi secara logis
+    # A. Kalkulasi Durasi Hari Tayang
+    kolom_waktu = None
+    for k in ['tanggal_posting', 'created_at', 'tanggal_iklan_dibuat']:
+        if k in df.columns:
+            kolom_waktu = k
+            break
+
+    if kolom_waktu:
+        df['durasi_tayang_hari'] = df[kolom_waktu].apply(hitung_durasi_hari)
         median_durasi = df['durasi_tayang_hari'].dropna().median()
         if pd.isna(median_durasi):
             median_durasi = 24
         df['durasi_tayang_hari'] = df['durasi_tayang_hari'].fillna(median_durasi).astype(int)
     else:
-        # Fallback distribusi wajar pasar 3 s/d 60 hari jika kolom created_at belum ada
         np.random.seed(42)
         df['durasi_tayang_hari'] = np.random.randint(3, 60, size=len(df))
 
-    # Target Klasifikasi: Cepat (< 30 hari) vs Lambat (>= 30 hari)
-    df['kategori_penjualan'] = df['durasi_tayang_hari'].apply(lambda d: 'Cepat' if d < 30 else 'Lambat')
+    # B. Target Klasifikasi (Memadukan Status Terjual & Durasi Hari)
+    def tentukan_kategori_laku(row):
+        # Jika judul/deskripsi memuat sinyal terjual langsung diklasifikasikan 'Cepat'
+        if row.get('status_iklan_terjual') == 'Terjual':
+            return 'Cepat'
+        return 'Cepat' if row['durasi_tayang_hari'] < 30 else 'Lambat'
 
-    # B. Usia Mobil & Intensitas Pemakaian (KM per Tahun)
+    df['kategori_penjualan'] = df.apply(tentukan_kategori_laku, axis=1)
+
+    # C. Usia Mobil & Intensitas Pemakaian
     df['usia_mobil'] = 2026 - df['tahun']
     df['km_per_tahun'] = (df['jarak_tempuh'] / df['usia_mobil'].apply(lambda x: max(1, x))).round(0).astype(int)
 
-    # C. Tipe Penjual & Garansi dari Deskripsi
+    # D. Tipe Penjual & Garansi dari Deskripsi
     deskripsi_teks = df['deskripsi'].fillna('').str.lower()
+    
+    # Periksa dari kolom badge scraping jika tersedia, dipadukan dengan kata kunci deskripsi
     df['tipe_penjual'] = deskripsi_teks.apply(
-        lambda t: 'Dealer' if any(k in t for k in ['showroom', 'paket kredit', 'tdp', 'dp ', 'otospector', 'olxmobbi']) else 'Individu'
+        lambda t: 'Dealer' if any(k in t for k in ['showroom', 'paket kredit', 'tdp', 'dp ', 'otospector', 'olxmobbi', 'leasing', 'bca finance']) else 'Individu'
     )
+    if 'tipe_penjual_badge' in df.columns:
+        df.loc[df['tipe_penjual_badge'].astype(str).str.lower().isin(['pro', 'dealer', 'showroom']), 'tipe_penjual'] = 'Dealer'
+
     df['ada_garansi'] = deskripsi_teks.apply(
-        lambda t: 'Ya' if any(k in t for k in ['garansi', 'warranty', 'sertifikat', 'otospector']) else 'Tidak'
+        lambda t: 'Ya' if any(k in t for k in ['garansi', 'warranty', 'sertifikat', 'otospector', 'lulus inspeksi']) else 'Tidak'
     )
 
     # 7. Normalisasi Teks
@@ -227,10 +240,10 @@ def main():
     df = df.reset_index(drop=True)
     print(f"Data bersih siap latih: {len(df)} baris")
 
-    # 8. Simpan Hasil ke CSV
+    # 8. Ekspor ke CSV
     df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
     print(f"Selesai! Disimpan ke '{OUTPUT_FILE}'\n")
-    print("Contoh 5 data dengan fitur baru:")
+    print("Contoh 5 baris dengan atribut baru:")
     kolom_pantau = ['merek', 'model', 'harga', 'durasi_tayang_hari', 'kategori_penjualan', 'tipe_penjual', 'ada_garansi']
     print(df[kolom_pantau].head())
 
