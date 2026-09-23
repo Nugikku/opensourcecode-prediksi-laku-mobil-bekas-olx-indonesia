@@ -4,7 +4,7 @@ import pandas as pd
 import re
 import os
 
-TARGET_TOTAL_DATA = 3000
+TARGET_TOTAL_DATA = 1000
 OUTPUT_FILE_RAW = "dataset_olx_mentah.csv"
 
 def deteksi_indikasi_terjual(judul, deskripsi):
