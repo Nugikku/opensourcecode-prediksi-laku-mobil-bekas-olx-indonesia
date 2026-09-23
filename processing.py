@@ -1,18 +1,3 @@
-"""
-Script Preprocessing Data Mobil Bekas OLX (Versi Klasifikasi & Likuiditas Penjualan)
-Penyempurnaan:
-1. Sinkronisasi atribut waktu posting ('tanggal_posting' / 'created_at').
-2. Penggabungan sinyal status terjual ('status_iklan_terjual') dengan durasi tayang:
-   - Jika status unit sudah 'Terjual' atau durasi tayang < 30 hari -> 'Cepat'
-   - Jika unit belum laku dan durasi tayang >= 30 hari -> 'Lambat'
-3. Rekayasa Fitur Prediktor:
-   - 'usia_mobil'    : selisih tahun saat ini dengan tahun perakitan.
-   - 'km_per_tahun'  : rata-rata kilometer per tahun (intensitas pemakaian).
-   - 'tipe_penjual'  : deteksi Dealer/Showroom vs Individu dari teks deskripsi.
-   - 'ada_garansi'   : deteksi garansi/sertifikasi unit dari teks deskripsi.
-4. Normalisasi teks menggunakan kamus slang otomotif.
-"""
-
 import pandas as pd
 import numpy as np
 import re
@@ -27,35 +12,36 @@ except ImportError:
 INPUT_FILE = "dataset_olx_mentah.csv"
 OUTPUT_FILE = "dataset_olx_bersih.csv"
 
-# ============================================================
-# 1. DAFTAR MODEL UNTUK EKSTRAKSI DARI JUDUL
-# ============================================================
 DAFTAR_MODEL = [
     # Toyota
-    "alphard", "vellfire", "avanza", "innova", "fortuner", "yaris", "rush", 
-    "calya", "agya", "raize", "corolla", "camry", "vios", "hilux", "sienta", 
-    "granace", "land cruiser", "hiace", "veloz", "harrier", "voxy",
+    "zenix", "innova zenix", "innova", "avanza", "veloz", "fortuner", "alphard", "vellfire", 
+    "yaris cross", "yaris", "rush", "calya", "agya", "raize", "corolla cross", "corolla altis", 
+    "corolla", "camry", "vios", "hilux", "sienta", "hiace", "land cruiser", "voxy", "harrier", 
+    "kijang", "crown", "granace",
     # Honda
-    "brio", "hrv", "crv", "city", "civic", "jazz", "mobilio", "brv", "accord", "freed", "odyssey", "wrv",
+    "brio", "hrv", "hr-v", "crv", "cr-v", "city", "civic", "jazz", "mobilio", 
+    "brv", "br-v", "wrv", "wr-v", "accord", "freed", "odyssey",
+    # Mazda (Penyebab muncul 'Lainnya' di screenshot)
+    "cx-5", "cx5", "cx-3", "cx3", "cx-8", "cx8", "cx-9", "cx9", "cx-30", "cx30", "cx-60", "cx60",
+    "mazda 2", "mazda2", "mazda 3", "mazda3", "mazda 6", "mazda6", "biante",
     # Daihatsu
-    "xenia", "sigra", "terios", "ayla", "rocky", "sirion", "gran max", "luxio",
+    "xenia", "sigra", "terios", "ayla", "rocky", "sirion", "gran max", "luxio", "taruna",
     # Mitsubishi
-    "xpander", "pajero", "outlander", "mirage", "triton", "eclipse",
+    "xpander cross", "xpander", "pajero sport", "pajero", "xforce", "outlander", "mirage", "triton", "eclipse cross",
     # Suzuki
-    "ertiga", "xl7", "ignis", "baleno", "jimny", "karimun", "sx4", "s-presso", "grand vitara", "every",
-    # Nissan
-    "grand livina", "livina", "serena", "xtrail", "juke", "march", "kicks", "magnite", "teana", "elgrand",
-    # BMW & Mercedes
-    "320i", "330i", "520i", "530i", "x1", "x3", "x5", "x7",
-    "c200", "c300", "e200", "e250", "e300", "s450", "glc", "gla", "gle", "amg", "cla", "cla200",
-    # Jeep & Mini
-    "rubicon", "wrangler", "sahara", "cherokee", "compass", "renegade",
-    "cooper", "countryman", "clubman",
+    "ertiga", "xl7", "xl-7", "ignis", "baleno", "jimny", "karimun wagon", "karimun", "sx4", "s-cross", 
+    "s-presso", "spresso", "grand vitara", "vitara", "apv", "carry",
     # Hyundai & Wuling
-    "creta", "stargazer", "santa fe", "palisade", "ioniq", "tucson", "h-1",
-    "confero", "almaz", "cortez", "air ev", "binguo", "alvez",
-    # Lainnya
-    "bj40", "sealion", "defender", "rx300", "everest", "ranger", "tiguan"
+    "creta", "stargazer", "santa fe", "palisade", "ioniq 5", "ioniq 6", "ioniq", "tucson", "staria", "h-1",
+    "air ev", "binguo ev", "binguo", "cloud ev", "almaz", "cortez", "confero", "alvez", "formo",
+    # Nissan
+    "magnite", "kicks", "livina", "grand livina", "serena", "xtrail", "x-trail", "juke", "march", "teana", "elgrand",
+    # Merek Listrik & Baru (BYD, Chery, GWM)
+    "seal", "atto 3", "atto", "dolphin", "m6", "omoda 5", "omoda", "tiggo 5x", "tiggo 7", "tiggo 8", "tiggo", "tank 500", "haval",
+    # Merek Eropa & Mewah
+    "c200", "c300", "e200", "e250", "e300", "s450", "glc", "gla", "gle", "cla",
+    "320i", "330i", "520i", "530i", "116i", "x1", "x3", "x5", "x7",
+    "cooper", "countryman", "rx270", "rx300", "rx350", "brz", "wrx", "forester", "everest", "ranger"
 ]
 
 def ekstrak_model(judul):
@@ -65,10 +51,6 @@ def ekstrak_model(judul):
             return m.title()
     return "Lainnya"
 
-# ============================================================
-# 2. TEXT CLEANING & NORMALISASI
-# ============================================================
-
 def bersihkan_dan_normalisasi_teks(teks):
     if pd.isna(teks):
         return ""
@@ -77,21 +59,13 @@ def bersihkan_dan_normalisasi_teks(teks):
     teks = re.sub(r'wa\s*\d+|08\d+', 'kontak', teks)
     teks = teks.translate(str.maketrans('', '', string.punctuation))
     teks = re.sub(r'\s+', ' ', teks).strip()
-
-    kata_kata = teks.split()
-    kata_terfilter = [KAMUS_SLANG_OTOMOTIF.get(k, k) for k in kata_kata]
-    return ' '.join(kata_terfilter)
-
-# ============================================================
-# 3. NUMERICAL & FEATURE EXTRACTION
-# ============================================================
+    return ' '.join([KAMUS_SLANG_OTOMOTIF.get(k, k) for k in teks.split()])
 
 def bersihkan_angka_harga(nilai):
     if pd.isna(nilai):
         return None
     try:
-        val_float = float(nilai)
-        return int(val_float)
+        return int(float(nilai))
     except (ValueError, TypeError):
         pass
     angka_saja = re.sub(r'\D', '', str(nilai))
@@ -115,12 +89,8 @@ def cari_tahun(row):
             return int(float(val))
         except ValueError:
             pass
-    
-    judul = str(row.get('judul', ''))
-    cocok = re.findall(r'\b(19\d{2}|20[0-2]\d)\b', judul)
-    if cocok:
-        return int(cocok[-1])
-    return None
+    cocok = re.findall(r'\b(19\d{2}|20[0-2]\d)\b', str(row.get('judul', '')))
+    return int(cocok[-1]) if cocok else None
 
 def tentukan_transmisi(row):
     gabungan = f"{row.get('transmisi', '')} {row.get('judul', '')} {str(row.get('deskripsi', ''))[:300]}".lower()
@@ -131,98 +101,70 @@ def tentukan_transmisi(row):
     return 'manual'
 
 def hitung_durasi_hari(val):
-    """Menghitung selisih hari dari waktu penayangan sampai saat ini."""
     if pd.isna(val) or str(val).strip() in ['', 'None', 'nan']:
         return None
     try:
-        tgl_posting = pd.to_datetime(val).tz_localize(None)
-        selisih = (datetime.now() - tgl_posting).days
-        return max(1, selisih)
+        return max(1, (datetime.now() - pd.to_datetime(val).tz_localize(None)).days)
     except Exception:
         return None
-
-# ===========================================================
-# 4. PIPELINE UTAMA
-# ===========================================================
 
 def main():
     print("Membaca file data mentah OLX...")
     try:
         df = pd.read_csv(INPUT_FILE)
     except FileNotFoundError:
-        print(f"[error] File '{INPUT_FILE}' tidak ditemukan.")
+        print(f"[ERROR] File '{INPUT_FILE}' tidak ditemukan!")
         return
 
-    print(f"Data awal: {len(df)} baris")
-    
-    # 1. Ekstraksi Fitur Dasar
     df['tahun'] = df.apply(cari_tahun, axis=1)
     df['transmisi'] = df.apply(tentukan_transmisi, axis=1)
     df['model'] = df['judul'].apply(ekstrak_model)
-
-    # 2. Pembersihan Nilai Numerik
     df['harga'] = df['harga'].apply(bersihkan_angka_harga)
     df['jarak_tempuh'] = df['jarak_tempuh'].apply(perbaiki_jarak_tempuh)
 
-    # 3. Filter Validitas
     df = df.dropna(subset=['harga', 'tahun'])
     df = df[(df['harga'] >= 25_000_000) & (df['harga'] <= 2_500_000_000)]
     df = df[(df['tahun'] >= 1995) & (df['tahun'] <= 2026)]
     df['tahun'] = df['tahun'].astype(int)
-
     df['merek'] = df['merek'].astype(str).str.strip().str.title()
 
-    # 4. Eliminasi Duplikasi
     if 'id_iklan' in df.columns:
         df = df.drop_duplicates(subset=['id_iklan'], keep='first')
     df = df.drop_duplicates(subset=['merek', 'model', 'tahun', 'transmisi', 'jarak_tempuh', 'harga'], keep='first')
 
-    # 5. Imputasi Odometer
-    median_global = df['jarak_tempuh'].dropna().median()
     df['jarak_tempuh'] = df.groupby('tahun')['jarak_tempuh'].transform(lambda s: s.fillna(s.median()))
-    df['jarak_tempuh'] = df['jarak_tempuh'].fillna(median_global).astype(int)
+    df['jarak_tempuh'] = df['jarak_tempuh'].fillna(df['jarak_tempuh'].dropna().median()).astype(int)
 
-    # ============================================================
-    # 6. FEATURE ENGINEERING (KLASIFIKASI & ATRIBUT BARU)
-    # ============================================================
-    print("Membentuk atribut baru untuk analisis penjualan & likuiditas...")
-
-    # A. Kalkulasi Durasi Hari Tayang
-    kolom_waktu = None
-    for k in ['tanggal_posting', 'created_at', 'tanggal_iklan_dibuat']:
-        if k in df.columns:
-            kolom_waktu = k
-            break
-
+    kolom_waktu = next((k for k in ['tanggal_posting', 'created_at', 'tanggal_iklan_dibuat'] if k in df.columns), None)
     if kolom_waktu:
         df['durasi_tayang_hari'] = df[kolom_waktu].apply(hitung_durasi_hari)
-        median_durasi = df['durasi_tayang_hari'].dropna().median()
-        if pd.isna(median_durasi):
-            median_durasi = 24
-        df['durasi_tayang_hari'] = df['durasi_tayang_hari'].fillna(median_durasi).astype(int)
+        df['durasi_tayang_hari'] = df['durasi_tayang_hari'].fillna(df['durasi_tayang_hari'].median() or 20).astype(int)
     else:
         np.random.seed(42)
         df['durasi_tayang_hari'] = np.random.randint(3, 60, size=len(df))
 
-    # B. Target Klasifikasi (Memadukan Status Terjual & Durasi Hari)
-    def tentukan_kategori_laku(row):
-        # Jika judul/deskripsi memuat sinyal terjual langsung diklasifikasikan 'Cepat'
-        if row.get('status_iklan_terjual') == 'Terjual':
+    # Logika 3 Kelas Likuiditas
+    def label_likuiditas(row):
+        if str(row.get('status_iklan_terjual', '')).lower() == 'terjual':
             return 'Cepat'
-        return 'Cepat' if row['durasi_tayang_hari'] < 30 else 'Lambat'
+        durasi = row['durasi_tayang_hari']
+        if durasi < 15:
+            return 'Cepat'
+        elif 15 <= durasi <= 30:
+            return 'Sedang'
+        else:
+            return 'Lambat'
 
-    df['kategori_penjualan'] = df.apply(tentukan_kategori_laku, axis=1)
+    df['kategori_penjualan'] = df.apply(label_likuiditas, axis=1)
 
-    # C. Usia Mobil & Intensitas Pemakaian
     df['usia_mobil'] = 2026 - df['tahun']
     df['km_per_tahun'] = (df['jarak_tempuh'] / df['usia_mobil'].apply(lambda x: max(1, x))).round(0).astype(int)
+    df['median_harga_pasar'] = df.groupby(['model', 'tahun'])['harga'].transform('median').fillna(df.groupby('model')['harga'].transform('median')).fillna(df['harga'])
+    df['deviasi_harga_pasar'] = ((df['harga'] - df['median_harga_pasar']) / df['median_harga_pasar'] * 100).round(2)
 
-    # D. Tipe Penjual & Garansi dari Deskripsi
     deskripsi_teks = df['deskripsi'].fillna('').str.lower()
-    
-    # Periksa dari kolom badge scraping jika tersedia, dipadukan dengan kata kunci deskripsi
     df['tipe_penjual'] = deskripsi_teks.apply(
-        lambda t: 'Dealer' if any(k in t for k in ['showroom', 'paket kredit', 'tdp', 'dp ', 'otospector', 'olxmobbi', 'leasing', 'bca finance']) else 'Individu'
+        lambda t: 'Dealer' if any(k in t for k in ['showroom', 'paket kredit', 'tdp', 'dp ', 'otospector', 'olxmobbi', 'leasing']) else 'Individu'
     )
     if 'tipe_penjual_badge' in df.columns:
         df.loc[df['tipe_penjual_badge'].astype(str).str.lower().isin(['pro', 'dealer', 'showroom']), 'tipe_penjual'] = 'Dealer'
@@ -231,21 +173,15 @@ def main():
         lambda t: 'Ya' if any(k in t for k in ['garansi', 'warranty', 'sertifikat', 'otospector', 'lulus inspeksi']) else 'Tidak'
     )
 
-    # 7. Normalisasi Teks
     if 'deskripsi' in df.columns:
         df['deskripsi_bersih'] = df['deskripsi'].apply(bersihkan_dan_normalisasi_teks)
     if 'judul' in df.columns:
         df['judul_bersih'] = df['judul'].apply(bersihkan_dan_normalisasi_teks)
 
     df = df.reset_index(drop=True)
-    print(f"Data bersih siap latih: {len(df)} baris")
-
-    # 8. Ekspor ke CSV
     df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
-    print(f"Selesai! Disimpan ke '{OUTPUT_FILE}'\n")
-    print("Contoh 5 baris dengan atribut baru:")
-    kolom_pantau = ['merek', 'model', 'harga', 'durasi_tayang_hari', 'kategori_penjualan', 'tipe_penjual', 'ada_garansi']
-    print(df[kolom_pantau].head())
+    print(f"[SUKSES] {len(df)} baris tersimpan ke '{OUTPUT_FILE}'.")
+    print(f"Distribusi Target: {df['kategori_penjualan'].value_counts().to_dict()}")
 
 if __name__ == "__main__":
     main()

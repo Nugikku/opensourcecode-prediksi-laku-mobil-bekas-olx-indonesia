@@ -4,11 +4,10 @@ import pandas as pd
 import re
 import os
 
-TARGET_TOTAL_DATA = 1000
+TARGET_TOTAL_DATA = 3000
 OUTPUT_FILE_RAW = "dataset_olx_mentah.csv"
 
 def deteksi_indikasi_terjual(judul, deskripsi):
-    """Mendeteksi apakah iklan sudah ditandai terjual oleh penjual."""
     teks = f"{str(judul)} {str(deskripsi)[:200]}".lower()
     kata_terjual = [
         r'\bterjual\b', r'\bsold\b', r'\blaku\b', 
@@ -23,14 +22,13 @@ async def scrape_olx(target_data=TARGET_TOTAL_DATA):
     all_cars = []
     id_terekam = set()
 
-    # Muat data yang sudah tersimpan jika script dijalankan ulang
     if os.path.exists(OUTPUT_FILE_RAW):
         try:
             df_ada = pd.read_csv(OUTPUT_FILE_RAW)
             if "id_iklan" in df_ada.columns:
                 all_cars = df_ada.to_dict("records")
                 id_terekam = set(df_ada["id_iklan"].dropna().astype(str).tolist())
-                print(f"[INFO] Melanjutkan progres: {len(all_cars)} data sudah ada di {OUTPUT_FILE_RAW}")
+                print(f"[INFO] Melanjutkan data lama: {len(all_cars)} baris sudah ada.")
         except Exception:
             pass
 
@@ -116,7 +114,7 @@ async def scrape_olx(target_data=TARGET_TOTAL_DATA):
 
         for idx, target_url in enumerate(urls, 1):
             if len(all_cars) >= target_data:
-                print(f"\n[SUKSES] Target {target_data} data tercapai!")
+                print(f"\nTarget {target_data} data tercapai!")
                 break
 
             print(f"\n[{idx}/{len(urls)}] Membuka URL: {target_url}")
@@ -124,7 +122,7 @@ async def scrape_olx(target_data=TARGET_TOTAL_DATA):
                 await page.goto(target_url, wait_until="domcontentloaded", timeout=45000)
                 await asyncio.sleep(4)
             except Exception as err:
-                print(f"[!] Gagal membuka URL ({err}), melanjutkan ke URL berikutnya...")
+                print(f"[!] Gagal membuka URL: {err}")
                 continue
 
             percobaan_kosong = 0
@@ -143,26 +141,18 @@ async def scrape_olx(target_data=TARGET_TOTAL_DATA):
                     if await tombol.count() > 0 and await tombol.is_visible():
                         await tombol.scroll_into_view_if_needed()
                         await tombol.click(force=True)
-                        print("--> Klik 'Muat lainnya'...")
                         await asyncio.sleep(3.0)
                 except Exception:
                     pass
 
                 print(f"Total Terkumpul: {len(all_cars)} / {target_data} baris...")
 
-                # Auto-save berkala setiap kelipatan 250 data
-                if len(all_cars) - checkpoint_simpan >= 250:
+                if len(all_cars) - checkpoint_simpan >= 200:
                     pd.DataFrame(all_cars).to_csv(OUTPUT_FILE_RAW, index=False, encoding="utf-8-sig")
                     checkpoint_simpan = len(all_cars)
-                    print(f"[Auto-Checkpoint] Tersimpan sementara: {checkpoint_simpan} baris.")
 
                 if len(all_cars) == jumlah_sebelum:
                     percobaan_kosong += 1
-                    if percobaan_kosong % 2 == 0:
-                        await page.evaluate("window.scrollBy(0, -1200);")
-                        await asyncio.sleep(1.0)
-                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
-                        await asyncio.sleep(1.5)
                 else:
                     percobaan_kosong = 0
 
@@ -171,15 +161,9 @@ async def scrape_olx(target_data=TARGET_TOTAL_DATA):
     return all_cars[:target_data]
 
 if __name__ == "__main__":
-    print("Memulai scraping OLX dengan atribut tanggal posting & indikasi terjual...")
+    print("Memulai scraping OLX...")
     hasil = asyncio.run(scrape_olx(target_data=TARGET_TOTAL_DATA))
-    
-    if not hasil:
-        print("\nData kosong. Periksa koneksi internet atau status limit IP.")
-    else:
-        df = pd.DataFrame(hasil)
-        df = df.drop_duplicates(subset=["id_iklan"]).reset_index(drop=True)
+    if hasil:
+        df = pd.DataFrame(hasil).drop_duplicates(subset=["id_iklan"]).reset_index(drop=True)
         df.to_csv(OUTPUT_FILE_RAW, index=False, encoding="utf-8-sig")
-        print(f"\nSelesai! Berhasil menyimpan {len(df)} baris ke '{OUTPUT_FILE_RAW}'")
-        kolom_cek = ["tanggal_posting", "status_iklan_terjual", "merek", "tahun", "harga", "tipe_penjual_badge", "lokasi"]
-        print(df[kolom_cek].head())
+        print(f"Selesai! Disimpan ke '{OUTPUT_FILE_RAW}' ({len(df)} baris).")
