@@ -1,10 +1,6 @@
 """
-Script Uji Interaktif & DSS Likuiditas Mobil Bekas (3 Kategori Likuiditas)
-Alur Input:
-1. Memilih Merek Mobil (Menu bernomor berkolom rapi).
-2. Memilih Model/Tipe sesuai Merek yang dipilih.
-3. Menampilkan seluruh daftar mobil riil dari dataset yang sesuai kriteria.
-4. Memilih nomor unit untuk dianalisis (Persona Penjual vs Pembeli + Price Drop Simulator).
+AutoLiquid DSS: Decision Support System Valuasi & Likuiditas Mobil Bekas
+Arsitektur: Hybrid (Machine Learning Regresi + Rule-Based Decision Engine)
 """
 
 import os
@@ -12,14 +8,15 @@ import pickle
 import pandas as pd
 import numpy as np
 
-FILE_MODEL = "model_klasifikasi_penjualan.pkl"
+FILE_MODEL = "model_regresi_harga.pkl"
 FILE_DATA = "dataset_olx_bersih.csv"
 
 # ============================================================
-# 1. LOAD MODEL .PKL & DATASET RIIL
+# 1. MEMUAT MODEL REGRESI & DATASET
 # ============================================================
 if not os.path.exists(FILE_MODEL) or not os.path.exists(FILE_DATA):
-    print("[!] File model atau dataset tidak ditemukan. Jalankan processing.py dan train_model_klasifikasi.py terlebih dahulu.")
+    print("[!] File model ('model_regresi_harga.pkl') atau dataset ('dataset_olx_bersih.csv') tidak ditemukan.")
+    print("    Jalankan processing.py dan train_model_regresi.py terlebih dahulu.")
     exit()
 
 with open(FILE_MODEL, "rb") as f:
@@ -27,7 +24,6 @@ with open(FILE_MODEL, "rb") as f:
 
 df = pd.read_csv(FILE_DATA)
 
-# Filter awal agar data yang disajikan tidak kosong dan bukan 'Lainnya'
 df_valid = df[
     (df['model'].fillna('').str.lower() != 'lainnya') & 
     (df['merek'].fillna('').str.lower() != 'lainnya') &
@@ -38,32 +34,31 @@ df_valid = df[
 ].copy().reset_index(drop=True)
 
 print("=" * 80)
-print("     AUTOVALUATE: SMART LIQUIDITY & PRICING DECISION SYSTEM (3 KELAS)    ")
+print("     AUTOLIQUID DSS: HYBRID PRICING & LIQUIDITY DECISION SUPPORT SYSTEM     ")
 print("=" * 80)
 
 # ============================================================
 # 2. PILIH SUDUT PANDANG PENGGUNA (PERSONA)
 # ============================================================
 print("Pilih Sudut Pandang Pengguna:")
-print("1. Penjual (Evaluasi kecepatan laku & simulasi optimasi harga)")
-print("2. Pembeli (Evaluasi kelayakan deal & strategi tawar-menawar)")
+print("1. Penjual (Evaluasi daya serap pasar & optimasi strategi harga)")
+print("2. Pembeli (Evaluasi kewajaran deal, deteksi risiko & panduan negosiasi)")
 
 while True:
     pilihan_role = input("Pilih (1/2): ").strip()
     if pilihan_role in ['1', '2']:
         is_penjual = (pilihan_role == '1')
         break
-    print("[!] Masukkan 1 atau 2.")
+    print("[!] Masukkan angka 1 atau 2.")
 
 # ============================================================
-# 3. PILIH MEREK MOBIL (BERKOLOM RAPI)
+# 3. PILIH MEREK KENDARAAN (4 KOLOM SEJAJAR)
 # ============================================================
 print("\n" + "=" * 80)
-print("Pilih Merek Mobil:")
+print("PILIH MEREK KENDARAAN:")
 
 daftar_merek = sorted(df_valid['merek'].unique())
 
-# Tampilkan merek dalam format 4 kolom sejajar
 for i in range(0, len(daftar_merek), 4):
     baris_teks = ""
     for j in range(4):
@@ -79,12 +74,12 @@ while True:
         if 1 <= no_merek <= len(daftar_merek):
             merek_terpilih = daftar_merek[no_merek - 1]
             break
-        print("[!] Nomor tidak tersedia.")
+        print("[!] Nomor merek tidak tersedia.")
     except ValueError:
         print("[!] Masukkan angka yang valid.")
 
 # ============================================================
-# 4. PILIH MODEL / TIPE SESUAI MEREK
+# 4. PILIH MODEL / SERI KENDARAAN
 # ============================================================
 df_merek = df_valid[df_valid['merek'] == merek_terpilih].copy()
 daftar_model = sorted(df_merek['model'].unique())
@@ -92,7 +87,6 @@ daftar_model = sorted(df_merek['model'].unique())
 print("\n" + "-" * 80)
 print(f"Pilihan Model/Seri untuk {merek_terpilih}:")
 
-# Tampilkan model dalam format 4 kolom sejajar
 for i in range(0, len(daftar_model), 4):
     baris_teks = ""
     for j in range(4):
@@ -108,147 +102,155 @@ while True:
         if 1 <= no_model <= len(daftar_model):
             model_terpilih = daftar_model[no_model - 1]
             break
-        print("[!] Nomor tidak tersedia.")
+        print("[!] Nomor model tidak tersedia.")
     except ValueError:
         print("[!] Masukkan angka yang valid.")
 
 # ============================================================
-# 5. MENAMPILKAN SEMUA DATA RIIL YANG COCOK DARI DATASET
+# 5. MENAMPILKAN UNIT RIIL DARI MARKETPLACE
 # ============================================================
 df_unit_cocok = df_merek[df_merek['model'] == model_terpilih].copy().reset_index(drop=True)
 
 print("\n" + "=" * 80)
-print(f"DAFTAR SEMUA DATA RIIL UNTUK {merek_terpilih.upper()} {model_terpilih.upper()} ({len(df_unit_cocok)} Unit Ditemukan):")
+print(f"DAFTAR UNIT AKTIF: {merek_terpilih.upper()} {model_terpilih.upper()} ({len(df_unit_cocok)} Unit Ditemukan)")
 print("=" * 80)
-print(f"{'No':<4} | {'Tahun':<6} | {'Transmisi':<10} | {'Jarak Tempuh':<14} | {'Harga Iklan':<16} | {'Durasi Riil':<12}")
+print(f"{'No':<4} | {'Tahun':<6} | {'Transmisi':<10} | {'Jarak Tempuh':<14} | {'Harga Iklan':<16} | {'Penjual':<10}")
 print("-" * 80)
 
 for idx, row in df_unit_cocok.iterrows():
     harga_fmt = f"Rp {int(row['harga']):,}"
     km_fmt = f"{int(row['jarak_tempuh']):,} KM"
-    durasi_fmt = f"{int(row.get('durasi_tayang_hari', 0))} hari"
-    print(f"[{idx+1:<2}] | {int(row['tahun']):<6} | {str(row['transmisi']).title():<10} | {km_fmt:<14} | {harga_fmt:<16} | {durasi_fmt:<12}")
+    penjual_fmt = str(row.get('tipe_penjual', 'Individu'))
+    print(f"[{idx+1:<2}] | {int(row['tahun']):<6} | {str(row['transmisi']).title():<10} | {km_fmt:<14} | {harga_fmt:<16} | {penjual_fmt:<10}")
 
 print("-" * 80)
 
 while True:
     try:
-        pilihan_unit = int(input(f"\nPilih nomor unit mobil yang ingin dianalisis (1-{len(df_unit_cocok)}): ").strip())
+        pilihan_unit = int(input(f"\nPilih nomor unit untuk dianalisis (1-{len(df_unit_cocok)}): ").strip())
         if 1 <= pilihan_unit <= len(df_unit_cocok):
             unit = df_unit_cocok.iloc[pilihan_unit - 1]
             break
-        print("[!] Nomor unit tidak ada di tabel.")
+        print("[!] Nomor unit tidak ada dalam tabel.")
     except ValueError:
         print("[!] Masukkan angka pilihan yang valid.")
 
 # ============================================================
-# 6. EKSTRAKSI ATRIBUT RIIL & PREDIKSI MODEL
+# 6. INFERENSI MACHINE LEARNING DENGAN PENGAMAN MINUS
 # ============================================================
-merek = unit['merek']
-model = unit['model']
-tahun = int(unit['tahun'])
-transmisi = str(unit['transmisi']).lower()
-km = int(unit['jarak_tempuh'])
-harga_iklan = float(unit['harga'])
-usia_mobil = int(unit.get('usia_mobil', max(1, 2026 - tahun)))
-km_per_tahun = int(unit.get('km_per_tahun', round(km / usia_mobil)))
+tahun_unit = int(unit['tahun'])
+km_unit = int(unit['jarak_tempuh'])
+usia_mobil = int(unit.get('usia_mobil', max(1, 2026 - tahun_unit)))
+km_per_tahun = int(unit.get('km_per_tahun', round(km_unit / usia_mobil)))
+transmisi_unit = str(unit['transmisi']).lower()
 tipe_penjual = str(unit.get('tipe_penjual', 'Individu'))
 ada_garansi = str(unit.get('ada_garansi', 'Tidak'))
-durasi_riil = int(unit.get('durasi_tayang_hari', 0))
-status_riil = str(unit.get('kategori_penjualan', '-'))
+harga_iklan = float(unit['harga'])
+indikasi_tdp = int(unit.get('indikasi_kredit_tdp', 0))
 
-# Median dan Deviasi Pasar Lokal
-df_lokal = df[(df['model'] == model) & (df['tahun'] == tahun)]
-median_pasar = df_lokal['harga'].median() if not df_lokal.empty else harga_iklan
-deviasi_pasar = ((harga_iklan - median_pasar) / median_pasar) * 100
+data_uji = pd.DataFrame([{
+    'merek': unit['merek'],
+    'model': unit['model'],
+    'transmisi': transmisi_unit,
+    'tipe_penjual': tipe_penjual,
+    'ada_garansi': ada_garansi,
+    'tahun': tahun_unit,
+    'jarak_tempuh': km_unit,
+    'usia_mobil': usia_mobil,
+    'km_per_tahun': km_per_tahun
+}])
 
-def buat_fitur(harga_tes, deviasi_tes):
-    return pd.DataFrame([{
-        'merek': merek,
-        'model': model,
-        'transmisi': transmisi,
-        'tipe_penjual': tipe_penjual,
-        'ada_garansi': ada_garansi,
-        'harga': harga_tes,
-        'tahun': tahun,
-        'jarak_tempuh': km,
-        'usia_mobil': usia_mobil,
-        'km_per_tahun': km_per_tahun,
-        'deviasi_harga_pasar': deviasi_tes
-    }])
+def hitung_harga_wajar_aman(data_row, unit_data):
+    pred_mentah = float(model_pipeline.predict(data_row)[0])
+    BATAS_MINIMUM = 20_000_000.0
+    
+    if pred_mentah < BATAS_MINIMUM:
+        df_sejenis = df[(df['merek'] == unit_data['merek']) & (df['model'] == unit_data['model'])]
+        if not df_sejenis.empty:
+            return max(BATAS_MINIMUM, float(df_sejenis['harga'].median() * 0.55))
+        return BATAS_MINIMUM
+    return pred_mentah
 
-data_uji = buat_fitur(harga_iklan, deviasi_pasar)
-prediksi_kelas = model_pipeline.predict(data_uji)[0]
+harga_wajar_ml = hitung_harga_wajar_aman(data_uji, unit)
+deviasi_persen = ((harga_iklan - harga_wajar_ml) / harga_wajar_ml) * 100
 
-# Probabilitas Keyakinan Model
-if hasattr(model_pipeline, "predict_proba"):
-    idx_kelas = list(model_pipeline.classes_).index(prediksi_kelas)
-    prob_keyakinan = model_pipeline.predict_proba(data_uji)[0][idx_kelas] * 100
+# ============================================================
+# 7. RULE-BASED DECISION & LIQUIDITY ENGINE
+# ============================================================
+peringatan_anomali = None
+if deviasi_persen <= -35.0 and indikasi_tdp == 1:
+    peringatan_anomali = "Indikasi Jebakan TDP/Kredit (Bukan Total Harga Mobil Tunai)"
+
+if deviasi_persen <= -3.0:
+    if km_per_tahun > 30000 and ada_garansi == 'Tidak':
+        status_likuiditas = "Sedang"
+        alasan_likuiditas = "Harga di bawah pasar, namun kilometer tergolong tinggi tanpa jaminan garansi."
+    else:
+        status_likuiditas = "Cepat"
+        alasan_likuiditas = "Harga penawaran sangat atraktif di bawah estimasi wajar pasar."
+elif -3.0 < deviasi_persen <= 7.0:
+    status_likuiditas = "Sedang"
+    alasan_likuiditas = "Harga berada pada rentang wajar penyerapan pasar."
 else:
-    prob_keyakinan = 85.0
+    status_likuiditas = "Lambat"
+    alasan_likuiditas = "Harga penawaran melebihi harga wajar pasar (overpriced)."
+
+harga_target_cepat = harga_wajar_ml * 0.95
+harga_target_sedang = harga_wajar_ml * 1.00
+batas_nego_maksimal = harga_wajar_ml * 0.92
 
 # ============================================================
-# 7. SIMULASI PENURUNAN HARGA (PRICE DROP SIMULATOR)
-# ============================================================
-harga_rekomendasi = harga_iklan
-if prediksi_kelas in ['Lambat', 'Sedang']:
-    for i in range(1, 20):  # Penurunan bertahap sampai 40%
-        harga_simulasi = harga_iklan * (1 - (0.02 * i))
-        deviasi_simulasi = ((harga_simulasi - median_pasar) / median_pasar) * 100
-        if model_pipeline.predict(buat_fitur(harga_simulasi, deviasi_simulasi))[0] == 'Cepat':
-            harga_rekomendasi = harga_simulasi
-            break
-
-# ============================================================
-# 8. OUTPUT KEPUTUSAN SISTEM RIIL
+# 8. OUTPUT SISTEM PENDUKUNG KEPUTUSAN
 # ============================================================
 print("\n" + "=" * 80)
-print("                   HASIL ANALISIS SISTEM KEPUTUSAN RIIL                   ")
+print("                   AUTOLIQUID DSS: KEPUTUSAN PASAR                    ")
 print("=" * 80)
-print(f"Judul Iklan Riil  : {unit.get('judul', '-')}")
-print(f"Spesifikasi       : {merek} {model} ({tahun}) | Transmisi: {transmisi.title()}")
-print(f"Odometer          : {km:,} KM (Rata-rata: {km_per_tahun:,} KM/Tahun)")
-print(f"Profil Penjual    : {tipe_penjual} | Status Garansi: {ada_garansi}")
+print(f"Judul Iklan       : {unit.get('judul', '-')}")
+print(f"Spesifikasi       : {unit['merek']} {unit['model']} ({tahun_unit}) | {transmisi_unit.title()}")
+print(f"Odometer          : {km_unit:,} KM (Pemakaian: {km_per_tahun:,} KM/Tahun)")
+print(f"Profil Penjual    : {tipe_penjual} | Jaminan Garansi: {ada_garansi}")
 print("-" * 80)
-print("RIWAYAT TAYANG & DATA PASAR:")
-print(f"- Tanggal Posting : {unit.get('tanggal_posting', 'Tersedia di sistem')}")
-print(f"- Durasi Tayang   : {durasi_riil} Hari di Marketplace")
-print(f"- Status Asli     : Kategori '{status_riil}'")
-print(f"- Harga Iklan     : Rp {int(harga_iklan):,}")
-print(f"- Median Pasar    : Rp {int(median_pasar):,} (Deviasi: {deviasi_pasar:+.1f}%)")
-print("-" * 80)
+print("VALUASI PASAR (MACHINE LEARNING CORE):")
+print(f"- Harga Iklan Aktif       : Rp {int(harga_iklan):,}")
+print(f"- Estimasi Harga Wajar ML : Rp {int(harga_wajar_ml):,}")
+print(f"- Deviasi terhadap Wajar  : {deviasi_persen:+.1f}%")
 
-if prediksi_kelas == 'Cepat':
-    status_label = "[✓] CEPAT LAKU (< 15 Hari)"
-elif prediksi_kelas == 'Sedang':
-    status_label = "[~] LAKU SEDANG (15 - 30 Hari)"
+if peringatan_anomali:
+    print(f"\n[⚠️ PERINGATAN RISIKO] : {peringatan_anomali}")
+    print("  Disarankan mengonfirmasi penjual apakah harga tertera adalah Total Tunai atau DP Kredit.")
+
+print("-" * 80)
+if status_likuiditas == "Cepat":
+    print("STATUS LIKUIDITAS : [✓] CEPAT LAKU (< 15 Hari)")
+elif status_likuiditas == "Sedang":
+    print("STATUS LIKUIDITAS : [~] LAKU SEDANG (15 - 30 Hari)")
 else:
-    status_label = "[!] LAMBAT LAKU (> 30 Hari / Rawan Macet)"
+    print("STATUS LIKUIDITAS : [!] LAMBAT LAKU (> 30 Hari / Tertahan)")
 
-print(f"PREDIKSI MODEL    : {status_label}")
-print(f"Tingkat Keyakinan : {prob_keyakinan:.2f}%")
+print(f"Analisis Penyerapan : {alasan_likuiditas}")
 print("-" * 80)
 
-print(f"KESIMPULAN & REKOMENDASI ({'SUDUT PANDANG PENJUAL' if is_penjual else 'SUDUT PANDANG PEMBELI'}):")
+print(f"REKOMENDASI SISTEM ({'SUDUT PANDANG PENJUAL' if is_penjual else 'SUDUT PANDANG PEMBELI'}):")
 if is_penjual:
-    if prediksi_kelas == 'Cepat':
-        print("• Penetapan harga iklan Anda sangat atraktif dan sesuai daya serap pasar.")
-        print("• Unit diprediksi cepat diminati dan terjual dalam 2 minggu pertama.")
-    elif prediksi_kelas == 'Sedang':
-        print("• Harga berada pada batas rata-rata pasar; iklan membutuhkan waktu penyerapan wajar.")
-        print(f"• 💡 OPTIMASI: Agar beralih ke 'Cepat Laku', pertimbangkan menyesuaikan harga ke Rp {int(harga_rekomendasi):,}.")
+    if status_likuiditas == "Cepat":
+        print("• Penetapan harga Anda sangat kompetitif dan berada dalam zona penyerapan cepat.")
+        print("• Potensi unit terjual dalam hitungan hari sangat tinggi tanpa perlu penurunan harga.")
+    elif status_likuiditas == "Sedang":
+        print("• Harga penawaran Anda kompetitif di tingkat pasar wajar.")
+        print(f"• 💡 SARAN CEPAT LAKU: Jika ingin mempercepat penjualan, sesuaikan ke Rp {int(harga_target_cepat):,}.")
     else:
-        print("• Harga dinilai terlalu tinggi dibanding kilometer dan usia mobil, rawan mengendap lama.")
-        print(f"• 💡 KOREKSI HARGA: Turunkan harga ke sekitar Rp {int(harga_rekomendasi):,} agar unit terserap pasar.")
+        print("• Harga yang Anda pasang terlalu tinggi dibandingkan mobil sejenis.")
+        print(f"• 💡 KOREKSI HARGA: Turunkan ke Rp {int(harga_target_sedang):,} (Wajar) atau Rp {int(harga_target_cepat):,} (Cepat Laku).")
 else:
-    if prediksi_kelas == 'Cepat':
-        print("• Unit ini berstatus 'Fair Deal / Best Price' (harga kompetitif dibanding pasar).")
-        print("• Sangat layak dibeli. Segera lakukan inspeksi sebelum unit terjual ke calon pembeli lain.")
-    elif prediksi_kelas == 'Sedang':
-        print("• Unit dijual dengan harga standar pasar.")
-        print(f"• 💡 STRATEGI NEGO: Ajukan penawaran awal di kisaran Rp {int(harga_rekomendasi):,} untuk mendapatkan deal terbaik.")
+    if status_likuiditas == "Cepat":
+        print("• Unit terindikasi sebagai 'Fair Deal / Best Offer'.")
+        print("• Sangat menguntungkan bagi pembeli. Jadwalkan inspeksi fisik sebelum unit dibeli pihak lain.")
+        print(f"• 💡 PANDUAN NEGO: Tawar tipis di kisaran Rp {int(batas_nego_maksimal):,}.")
+    elif status_likuiditas == "Sedang":
+        print("• Mobil ditawarkan pada harga wajar pasar.")
+        print(f"• 💡 PANDUAN NEGO: Targetkan kesepakatan akhir di sekitar Rp {int(harga_target_cepat):,}.")
     else:
-        print("• Unit terindikasi 'Overpriced' (kemahalan) terhadap tren kondisi pasaran.")
-        print(f"• 💡 STRATEGI NEGO: Gunakan lama waktu tayang iklan sebagai bahan tawar, patok batas maksimal di Rp {int(harga_rekomendasi):,}.")
+        print("• Unit terindikasi 'Overpriced' (kemahalan dibanding kondisi pasaran).")
+        print(f"• 💡 PANDUAN NEGO: Hindari membeli di harga iklan; tekan negosiasi mendekati nilai wajar Rp {int(harga_wajar_ml):,}.")
 
 print("=" * 80 + "\n")
