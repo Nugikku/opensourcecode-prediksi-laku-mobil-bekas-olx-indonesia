@@ -1,6 +1,34 @@
 """
 Script Preprocessing Data Mobil Bekas OLX (AutoLiquid DSS Hybrid)
 Menggabungkan keandalan ekstraksi script lama dengan fitur analitis DSS.
+
+Riwayat revisi (lihat komentar berkode [FIX] / [BARU] di bawah):
+  [FIX-1] Ekstraksi model dari judul dibatasi ke daftar model milik MEREK
+          baris itu sendiri (bukan mencari ke seluruh 170+ model lintas
+          merek). Sebelumnya judul yang menyebut merek lain utk SEO/
+          perbandingan (mis. "TT fortuner", "BUKAN CAMRY") bisa salah
+          ke-label sebagai merek yang disebut, bukan merek aslinya.
+  [FIX-2] Saat beberapa model dari merek yang sama muncul di judul, yang
+          dipilih adalah yang MUNCUL PALING AWAL di teks, dan varian
+          ejaan/typo umum (mis. "inova" utk "innova") dikenali lewat
+          KAMUS_ALIAS_MODEL.
+  [FIX-2b] Pengecualian utk nama model yang jadi PREFIX model lain yang
+          lebih spesifik & beda kelas harga jauh (mis. "Kijang" klasik
+          vs "Kijang Innova" modern -- nama resmi Innova di Indonesia
+          tetap menyertakan kata "Kijang").
+  [FIX-3] Harga "boneka"/placeholder (mis. 99999999, 88888888) yang
+          sering dipakai penjual OLX sbg trik iklan disaring -- dulu
+          lolos filter rentang harga & mencemari data training.
+  [DICABUT] Sempat dicoba mengonsolidasikan kombinasi merek+model bersampel
+          sedikit ke satu kategori umum "Model Lainnya" per merek. Setelah
+          diuji, langkah ini JUSTRU MEMPERBURUK akurasi (mencampur unit
+          murah & mahal yang tidak sejenis dalam satu kategori generik),
+          sehingga dihapus lagi.
+  [BARU] Ditambahkan kolom 'usia_bracket' & 'jumlah_sampel_kategori':
+          bukan mengubah data atau menyembunyikan kelangkaan sampel,
+          tapi MENGUKUR & MENYIMPAN informasi kelangkaannya, supaya
+          tahap training & aplikasi prediksi bisa memberi peringatan
+          keyakinan rendah ke pengguna alih-alih diam-diam salah.
 """
 
 import os
@@ -18,46 +46,102 @@ INPUT_FILE = "dataset_olx_mentah.csv"
 OUTPUT_FILE = "dataset_olx_bersih.csv"
 TAHUN_SEKARANG = 2026
 
+# [BARU] Konstanta bersama untuk indikator keyakinan prediksi. Diimpor
+# langsung oleh train_model_klasifikasi.py & test_prediksi_klasifikasi.py
+# supaya ambang & ukuran kelompok usia konsisten di satu tempat saja.
+BRACKET_USIA_TAHUN = 5      # ukuran kelompok usia (tahun) utk menghitung kecukupan sampel
+AMBANG_KEYAKINAN_SAMPEL = 15  # di bawah ini, prediksi dianggap keyakinan RENDAH
+
 # ============================================================
-# 1. DAFTAR MODEL UNTUK EKSTRAKSI DARI JUDUL
+# 1. DAFTAR MODEL PER MEREK UNTUK EKSTRAKSI DARI JUDUL [FIX-1]
 # ============================================================
-DAFTAR_MODEL = [
-    # Toyota
-    "alphard", "vellfire", "avanza", "innova", "fortuner", "yaris", "rush", 
-    "calya", "agya", "raize", "corolla", "camry", "vios", "hilux", "sienta", 
-    "granace", "land cruiser", "hiace", "veloz", "harrier", "voxy", "kijang",
-    # Honda
-    "brio", "hrv", "crv", "city", "civic", "jazz", "mobilio", "brv", "accord", "freed", "odyssey", "wrv",
-    # Daihatsu
-    "xenia", "sigra", "terios", "ayla", "rocky", "sirion", "gran max", "luxio", "taruna",
-    # Mitsubishi
-    "xpander", "pajero", "outlander", "mirage", "triton", "eclipse", "l300",
-    # Suzuki
-    "ertiga", "xl7", "ignis", "baleno", "jimny", "karimun", "sx4", "s-presso", "grand vitara", "every", "apv",
-    # Nissan
-    "grand livina", "livina", "serena", "xtrail", "juke", "march", "kicks", "magnite", "teana", "elgrand", "evalia",
-    # BMW & Mercedes
-    "320i", "330i", "520i", "530i", "x1", "x3", "x5", "x7",
-    "c200", "c300", "e200", "e250", "e300", "s450", "glc", "gla", "gle", "amg", "cla", "cla200",
-    # Jeep & Mini
-    "rubicon", "wrangler", "sahara", "cherokee", "compass", "renegade",
-    "cooper", "countryman", "clubman",
-    # Hyundai & Wuling
-    "creta", "stargazer", "santa fe", "palisade", "ioniq", "tucson", "h-1",
-    "confero", "almaz", "cortez", "air ev", "binguo", "alvez", "formo",
-    # Lainnya
-    "bj40", "sealion", "defender", "rx300", "everest", "ranger", "tiguan"
-]
+MODEL_PER_MEREK = {
+    "toyota": [
+        "alphard", "vellfire", "avanza", "innova", "fortuner", "yaris", "rush",
+        "calya", "agya", "raize", "corolla", "camry", "vios", "hilux", "sienta",
+        "granace", "land cruiser", "hiace", "veloz", "harrier", "voxy", "kijang",
+    ],
+    "honda": [
+        "brio", "hrv", "hr-v", "crv", "cr-v", "city", "civic", "jazz", "mobilio",
+        "brv", "br-v", "accord", "freed", "odyssey", "wrv", "wr-v",
+    ],
+    "daihatsu": [
+        "xenia", "sigra", "terios", "ayla", "rocky", "sirion", "gran max", "luxio", "taruna",
+    ],
+    "mitsubishi": [
+        "xpander", "pajero", "outlander", "mirage", "triton", "eclipse", "l300",
+    ],
+    "suzuki": [
+        "ertiga", "xl7", "ignis", "baleno", "jimny", "karimun", "sx4",
+        "s-presso", "grand vitara", "every", "apv",
+    ],
+    "nissan": [
+        "grand livina", "livina", "serena", "xtrail", "x-trail", "juke", "march",
+        "kicks", "magnite", "teana", "elgrand", "evalia",
+    ],
+    "bmw": ["320i", "330i", "520i", "530i", "x1", "x3", "x5", "x7"],
+    "mercedes-benz": [
+        "c200", "c300", "e200", "e250", "e300", "s450", "glc", "gla", "gle", "amg", "cla", "cla200",
+    ],
+    "jeep": ["rubicon", "wrangler", "sahara", "cherokee", "compass", "renegade"],
+    "mini": ["cooper", "countryman", "clubman"],
+    "hyundai": ["creta", "stargazer", "santa fe", "palisade", "ioniq", "tucson", "h-1"],
+    "wuling": ["confero", "almaz", "cortez", "air ev", "binguo", "alvez", "formo"],
+    "baic": ["bj40"],
+    "byd": ["sealion"],
+    "land rover": ["defender"],
+    "lexus": ["rx300"],
+    "ford": ["everest", "ranger"],
+    "volkswagen": ["tiguan"],
+}
+
+# [FIX-2] Alias/typo umum -> nama model baku. Dicek untuk merek yang relevan.
+KAMUS_ALIAS_MODEL = {
+    "inova": "innova",
+    "innofa": "innova",
+    "avanzaa": "avanza",
+}
+
+# [FIX-2b] Beberapa nama model adalah PREFIX dari model lain yang lebih spesifik
+# dan bernilai jual jauh berbeda. Kalau kata kunci yang lebih spesifik (value)
+# ikut disebut, kata kunci generik (key) TIDAK boleh dianggap match sendiri.
+MODEL_PREFIX_AMBIGU = {
+    "kijang": ["innova", "inova"],
+}
+
+def _buat_pola_regex(kata):
+    dasar = r'\b' + re.escape(kata) + r'\b'
+    kata_lebih_spesifik = MODEL_PREFIX_AMBIGU.get(kata)
+    if kata_lebih_spesifik:
+        pola_negatif = '|'.join(re.escape(k) for k in kata_lebih_spesifik)
+        return dasar + rf'(?!\s*(?:{pola_negatif}))'
+    return dasar
 
 def ekstrak_model(row):
     model_asli = str(row.get('model', '')).strip()
     if model_asli and model_asli.lower() not in ['lainnya', 'others', 'nan', '']:
         return model_asli.title()
-    
+
+    merek_lower = str(row.get('merek', '')).strip().lower()
     judul_lower = str(row.get('judul', '')).lower()
-    for m in DAFTAR_MODEL:
-        if re.search(r'\b' + re.escape(m) + r'\b', judul_lower):
-            return m.title()
+    daftar_model_merek = MODEL_PER_MEREK.get(merek_lower, [])
+
+    kandidat_kata = list(daftar_model_merek) + [
+        alias for alias, baku in KAMUS_ALIAS_MODEL.items() if baku in daftar_model_merek
+    ]
+
+    kandidat = []
+    for m in kandidat_kata:
+        pola = _buat_pola_regex(m)
+        match = re.search(pola, judul_lower)
+        if match:
+            nama_baku = KAMUS_ALIAS_MODEL.get(m, m)
+            kandidat.append((match.start(), nama_baku))
+
+    if kandidat:
+        # [FIX-2] pilih yang muncul PALING AWAL di judul, bukan urutan daftar
+        kandidat.sort(key=lambda x: x[0])
+        return kandidat[0][1].title()
     return "Lainnya"
 
 # ============================================================
@@ -79,16 +163,31 @@ def bersihkan_dan_normalisasi_teks(teks):
 # ============================================================
 # 3. NUMERICAL & FEATURE EXTRACTION
 # ============================================================
+def is_harga_boneka(angka_str):
+    """[FIX-3] Deteksi harga placeholder/trik iklan: seluruh digit sama
+    (mis. 99999999, 88888888) atau pola 2-digit berulang (mis. 12121212)."""
+    if not angka_str or len(angka_str) < 6:
+        return False
+    if len(set(angka_str)) == 1:
+        return True
+    if len(angka_str) % 2 == 0 and angka_str == (angka_str[:2] * (len(angka_str) // 2)):
+        return True
+    return False
+
 def bersihkan_angka_harga(nilai):
     if pd.isna(nilai):
         return None
     try:
         val_float = float(nilai)
-        return int(val_float)
+        angka_saja = str(int(val_float))
     except (ValueError, TypeError):
-        pass
-    angka_saja = re.sub(r'\D', '', str(nilai))
-    return int(angka_saja) if angka_saja else None
+        angka_saja = re.sub(r'\D', '', str(nilai))
+
+    if not angka_saja:
+        return None
+    if is_harga_boneka(angka_saja):  # [FIX-3]
+        return None
+    return int(angka_saja)
 
 def perbaiki_jarak_tempuh(val):
     if pd.isna(val):
@@ -108,7 +207,7 @@ def cari_tahun(row):
             return int(float(val))
         except ValueError:
             pass
-    
+
     judul = str(row.get('judul', ''))
     cocok = re.findall(r'\b(19\d{2}|20[0-2]\d)\b', judul)
     if cocok:
@@ -123,6 +222,12 @@ def tentukan_transmisi(row):
         return 'manual'
     return 'automatic'
 
+def hitung_usia_bracket(usia_mobil, ukuran_bracket=BRACKET_USIA_TAHUN):
+    """[BARU] Kelompokkan usia mobil ke rentang N-tahunan (mis. 0-4, 5-9,
+    10-14, ...) supaya perhitungan kecukupan sampel tidak terlalu ketat
+    per-tahun-persis (yang hampir pasti selalu sedikit)."""
+    return (int(usia_mobil) // ukuran_bracket) * ukuran_bracket
+
 # ============================================================
 # 4. PIPELINE UTAMA
 # ============================================================
@@ -134,7 +239,7 @@ def main():
 
     df = pd.read_csv(INPUT_FILE)
     print(f"Data awal: {len(df):,} baris")
-    
+
     # 1. Ekstraksi Fitur Dasar
     df['tahun'] = df.apply(cari_tahun, axis=1)
     df['transmisi'] = df.apply(tentukan_transmisi, axis=1)
@@ -197,6 +302,15 @@ def main():
     df = df.drop_duplicates(subset=['merek', 'model', 'tahun', 'transmisi', 'jarak_tempuh', 'harga'], keep='first')
 
     df = df.reset_index(drop=True)
+
+    # 10. [BARU] Indikator kecukupan sampel per merek+model+kelompok usia
+    df['usia_bracket'] = df['usia_mobil'].apply(hitung_usia_bracket)
+    df['jumlah_sampel_kategori'] = df.groupby(['merek', 'model', 'usia_bracket'])['model'].transform('count')
+
+    n_rendah = int((df['jumlah_sampel_kategori'] < AMBANG_KEYAKINAN_SAMPEL).sum())
+    print(f"[INFO] {n_rendah:,} dari {len(df):,} baris ({n_rendah/len(df)*100:.1f}%) berada di kombinasi "
+          f"merek+model+usia dgn sampel < {AMBANG_KEYAKINAN_SAMPEL} (akan ditandai keyakinan rendah saat prediksi)")
+
     print(f"Data bersih siap training: {len(df):,} baris")
     print(f"Rentang Harga : Rp {int(df['harga'].min()):,} s/d Rp {int(df['harga'].max()):,}")
     print(f"Merek Teratas :\n{df['merek'].value_counts().head(5)}")
@@ -205,4 +319,4 @@ def main():
     print(f"\n[SUKSES] Dataset berhasil disimpan ke '{OUTPUT_FILE}'.")
 
 if __name__ == "__main__":
-    main()
+    main()  
