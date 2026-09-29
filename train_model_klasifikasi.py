@@ -34,9 +34,11 @@ from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import (accuracy_score, f1_score, precision_score, recall_score,
-                             confusion_matrix, classification_report, mean_absolute_percentage_error)
+                             confusion_matrix, classification_report, mean_absolute_percentage_error,
+                             mean_squared_error, mean_absolute_error, root_mean_squared_error)
 
 from processing import AMBANG_KEYAKINAN_SAMPEL, hitung_harga_wajar_fallback, klip_deviasi, DEVIASI_MIN, DEVIASI_MAX
 
@@ -92,7 +94,13 @@ df_model['sumber_harga_wajar'] = sumber
 
 mape_model = mean_absolute_percentage_error(df_model['harga'], df_model['harga_wajar_model']) * 100
 mape_final = mean_absolute_percentage_error(df_model['harga'], df_model['harga_wajar_final']) * 100
+mse_final = mean_squared_error(df_model['harga'], df_model['harga_wajar_final'])
+rmse_final = root_mean_squared_error(df_model['harga'], df_model['harga_wajar_final'])
+mae_final = mean_absolute_error(df_model['harga'], df_model['harga_wajar_final'])
 print(f"Galat rata-rata (MAPE) harga wajar: hanya model ML {mape_model:.1f}% -> model+fallback {mape_final:.1f}%")
+print(f"MAE  harga wajar (model+fallback) : Rp {mae_final:,.0f}")
+print(f"MSE  harga wajar (model+fallback) : {mse_final:,.0f}  (satuan Rupiah^2, sulit diinterpretasi langsung)")
+print(f"RMSE harga wajar (model+fallback) : Rp {rmse_final:,.0f}")
 print(df_model['sumber_harga_wajar'].value_counts().to_string())
 
 regresi_final = buat_regresor().fit(df_model[fitur_harga], df_model['harga'])
@@ -114,6 +122,12 @@ turun = ((df_model['status_likuiditas'] == "Cepat") & (df_model['km_per_tahun'] 
          & (df_model['ada_garansi'] == 'Tidak'))
 df_model.loc[turun, 'status_likuiditas'] = "Sedang"
 print(df_model['status_likuiditas'].value_counts().to_string())
+
+print("\n[CATATAN SIRKULARITAS] Label di atas dibentuk DARI deviasi_persen (+ penyesuaian "
+      "km/garansi). Karena deviasi_persen nanti juga dipakai sbg fitur classifier, akurasi "
+      "tinggi sebagian besar wajar terjadi (classifier menghafal ambang tertile sendiri), "
+      "BUKAN otomatis bukti prediksi cocok dgn realita pasar. Lihat UJI ABLATION di Tahap 3 "
+      "utk kuantifikasi seberapa besar pengaruh fitur ini.")
 
 # ============================================================
 # TAHAP 3: CLASSIFIER (dengan uji monotonisitas terhadap harga)
@@ -188,13 +202,66 @@ best_pipe, y_pred_best = pipes[best_name]
 print(f"\nModel terpilih: {best_name} (F1-macro terbaik di antara model yang monoton & tidak overconfident)")
 print(classification_report(y_test, y_pred_best, labels=LABEL_ORDER))
 
+# --- RMSE/MSE berbasis peringkat (ordinal) utk classifier ---
+# Label Cepat/Sedang/Lambat punya urutan alami (0/1/2). Accuracy & F1
+# menganggap semua kesalahan sama berat; RMSE peringkat mengukur SEBERAPA
+# JAUH kesalahannya (menebak Sedang padahal Cepat = galat 1, menebak
+# Lambat padahal Cepat = galat 2).
+rank_aktual = y_test.map(RANK).values
+rank_pred = pd.Series(y_pred_best).map(RANK).values
+mse_ordinal = mean_squared_error(rank_aktual, rank_pred)
+rmse_ordinal = root_mean_squared_error(rank_aktual, rank_pred)
+mae_ordinal = mean_absolute_error(rank_aktual, rank_pred)
+print(f"\nEvaluasi ordinal classifier ({best_name}), peringkat Cepat=0, Sedang=1, Lambat=2:")
+print(f"  MAE  peringkat  : {mae_ordinal:.4f}")
+print(f"  MSE  peringkat  : {mse_ordinal:.4f}")
+print(f"  RMSE peringkat  : {rmse_ordinal:.4f}  (0 = sempurna; >1 berarti rata-rata meleset >1 kelas)")
+
+# --- [BARU] UJI ABLATION: model sama, TANPA fitur deviasi_persen ---
+print(f"\nUji ablation ({best_name}, TANPA fitur deviasi_persen):")
+fitur_tanpa_deviasi = fitur_harga  # = fitur_kls dikurangi deviasi_persen
+clf_ablation = clone(kandidat[best_name])  # clone: jangan timpa objek yang dipakai best_pipe
+pipe_ablation = Pipeline([('prep', buat_prep(numerical_cols)), ('clf', clf_ablation)])
+pipe_ablation.fit(X_train[fitur_tanpa_deviasi], y_train)
+yp_ablation = pipe_ablation.predict(X_test[fitur_tanpa_deviasi])
+acc_ablation = accuracy_score(y_test, yp_ablation)
+f1_ablation = f1_score(y_test, yp_ablation, average='macro')
+acc_lengkap = accuracy_score(y_test, y_pred_best)
+f1_lengkap = f1_score(y_test, y_pred_best, average='macro')
+selisih_acc = acc_lengkap - acc_ablation
+print(f"  Dengan deviasi_persen    : accuracy {acc_lengkap:.4f} | F1-macro {f1_lengkap:.4f}")
+print(f"  Tanpa deviasi_persen     : accuracy {acc_ablation:.4f} | F1-macro {f1_ablation:.4f}")
+print(f"  Selisih accuracy         : {selisih_acc:+.4f}")
+if selisih_acc > 0.15:
+    print("  -> Penurunan besar: performa selama ini didominasi deviasi_persen, sesuai dugaan sirkularitas di atas.")
+else:
+    print("  -> Penurunan kecil: fitur lain (merek/model/km/garansi) juga berkontribusi nyata.")
+
+# RMSE/MSE ordinal utk SEMUA kandidat classifier, sbg pembanding di grafik & CSV
+for h, (nm, (p, yp)) in zip(hasil, pipes.items()):
+    rp = pd.Series(yp).map(RANK).values
+    h["RMSE_Ordinal"] = root_mean_squared_error(rank_aktual, rp)
+    h["MSE_Ordinal"] = mean_squared_error(rank_aktual, rp)
+df_metrik = pd.DataFrame(hasil)
+
 with open("model_klasifikasi_likuiditas.pkl", "wb") as f:
     pickle.dump(best_pipe, f)
 baris_terpilih = df_metrik[df_metrik["Model"] == best_name].iloc[0]
 meta = {"q33": float(q33), "q67": float(q67), "label_order": LABEL_ORDER, "model_klasifikasi": best_name,
         "rerata_keyakinan_puncak": round(float(baris_terpilih["Rerata_Keyakinan_Puncak"]), 4),
         "fitur_harga": fitur_harga, "fitur_klasifikasi": fitur_kls, "ambang_sampel": AMBANG_KEYAKINAN_SAMPEL,
-        "mape_harga_wajar_pct": round(mape_final, 2), "tanggal_latih": datetime.now().strftime("%Y-%m-%d")}
+        "mape_harga_wajar_pct": round(mape_final, 2),
+        "mae_harga_wajar_rupiah": round(mae_final, 0),
+        "mse_harga_wajar": round(mse_final, 0),
+        "rmse_harga_wajar_rupiah": round(rmse_final, 0),
+        "rmse_ordinal_classifier": round(float(baris_terpilih["RMSE_Ordinal"]), 4),
+        "mse_ordinal_classifier": round(float(baris_terpilih["MSE_Ordinal"]), 4),
+        "ablation_akurasi_dengan_deviasi": round(float(acc_lengkap), 4),
+        "ablation_akurasi_tanpa_deviasi": round(float(acc_ablation), 4),
+        "ablation_selisih_akurasi": round(float(selisih_acc), 4),
+        "catatan": "Label status_likuiditas dibentuk dari deviasi_persen, yang juga dipakai sbg "
+                   "fitur classifier -- akurasi tinggi sebagian bersifat sirkular, lihat ablation_*.",
+        "tanggal_latih": datetime.now().strftime("%Y-%m-%d")}
 json.dump(meta, open("autolaku_meta.json", "w"), indent=2)
 print("[SUKSES] Tersimpan: model_regresi_harga.pkl, model_klasifikasi_likuiditas.pkl, autolaku_meta.json")
 
@@ -209,6 +276,8 @@ rho, pval = spearmanr(df_model.loc[ok, 'deviasi_persen'], df_model.loc[ok, 'umur
 rata_umur = df_model[ok].groupby('status_likuiditas')['umur_iklan_hari'].mean().reindex(LABEL_ORDER)
 print(f"Korelasi Spearman deviasi harga vs umur iklan: rho={rho:.3f} (p={pval:.3g})")
 print("Rata-rata umur iklan (hari) per label:\n" + rata_umur.round(1).to_string())
+median_umur = df_model[ok].groupby('status_likuiditas')['umur_iklan_hari'].median().reindex(LABEL_ORDER)
+print("Median umur iklan (hari) per label:\n" + median_umur.round(1).to_string())
 print("Interpretasi: label 'Lambat' seharusnya beriklan lebih lama. Umur iklan hanyalah pendekatan "
       "(iklan bisa di-bump), bukan bukti terjual.")
 n_terjual = int((df_model['status_iklan_terjual'] == 'Terjual').sum()) if 'status_iklan_terjual' in df_model else 0
@@ -237,6 +306,20 @@ fig, ax = plt.subplots(figsize=(7, 5)); cnt = df_model['status_likuiditas'].valu
 ax.bar(cnt.index, cnt.values, color=["#059669", "#F59E0B", "#DC2626"]); ax.set_title("Distribusi Label Proxy (Tertile)")
 plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "3_distribusi_label_proxy.png"), dpi=300); plt.close(fig)
 
+# --- 3b. [BARU] Cek monotonisitas label: sebaran deviasi_persen per label ---
+fig, ax = plt.subplots(figsize=(7, 5))
+data_box = [df_model.loc[df_model['status_likuiditas'] == l, 'deviasi_persen'] for l in LABEL_ORDER]
+bp = ax.boxplot(data_box, patch_artist=True, showmeans=True)
+ax.set_xticks(range(1, len(LABEL_ORDER) + 1)); ax.set_xticklabels(LABEL_ORDER)
+for patch, warna in zip(bp['boxes'], ["#059669", "#F59E0B", "#DC2626"]):
+    patch.set_facecolor(warna)
+ax.axhline(q33, color="gray", linestyle="--", linewidth=1, label=f"Q33 ({q33:.1f}%)")
+ax.axhline(q67, color="gray", linestyle=":", linewidth=1, label=f"Q67 ({q67:.1f}%)")
+ax.set_ylabel("Deviasi Harga (%)")
+ax.set_title("Sebaran Deviasi Harga per Label (cek monotonisitas Cepat<Sedang<Lambat)", fontsize=11, pad=10)
+ax.legend()
+plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "9_deviasi_per_label.png"), dpi=300); plt.close(fig)
+
 clf_final = best_pipe.named_steps['clf']
 if hasattr(clf_final, "feature_importances_"):
     imp = pd.DataFrame({"Fitur": best_pipe.named_steps['prep'].get_feature_names_out(),
@@ -254,9 +337,35 @@ fig, ax = plt.subplots(figsize=(6, 5)); ax.bar([f"< {AMBANG_KEYAKINAN_SAMPEL}\n(
 ax.set_title("Akurasi per Kecukupan Sampel"); plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, "5_akurasi_per_kecukupan_sampel.png"), dpi=300); plt.close(fig)
 
-fig, ax = plt.subplots(figsize=(6, 5)); ax.bar(LABEL_ORDER, rata_umur.values, color=["#059669", "#F59E0B", "#DC2626"])
-ax.set_ylabel("Rata-rata umur iklan (hari)"); ax.set_title("Validasi Kasar: Umur Iklan per Label"); plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, "6_umur_iklan_per_label.png"), dpi=300); plt.close(fig)
+fig, ax = plt.subplots(figsize=(7, 5))
+data_umur = [df_model.loc[ok & (df_model['status_likuiditas'] == l), 'umur_iklan_hari'] for l in LABEL_ORDER]
+bp = ax.boxplot(data_umur, patch_artist=True, showmeans=True)
+ax.set_xticks(range(1, len(LABEL_ORDER) + 1)); ax.set_xticklabels(LABEL_ORDER)
+for patch, warna in zip(bp['boxes'], ["#059669", "#F59E0B", "#DC2626"]):
+    patch.set_facecolor(warna)
+ax.set_ylabel("Umur iklan (hari)")
+ax.set_title("Validasi Kasar: Sebaran Umur Iklan per Label (median, bukan rata-rata)", fontsize=11, pad=10)
+plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "6_umur_iklan_per_label.png"), dpi=300); plt.close(fig)
+
+# --- 7. [BARU] RMSE/MAE Harga Wajar (Rupiah, dibulatkan ke juta) ---
+fig, ax = plt.subplots(figsize=(6, 5))
+label_g = ["MAE", "RMSE"]; nilai_g = [mae_final / 1e6, rmse_final / 1e6]
+ax.bar(label_g, nilai_g, color=["#2563EB", "#DC2626"])
+ax.set_ylabel("Juta Rupiah")
+ax.set_title(f"Galat Model Harga Wajar (MAPE {mape_final:.1f}%)", fontsize=12, pad=10)
+for i, v in enumerate(nilai_g):
+    ax.text(i, v, f"Rp {v:,.1f} jt", ha="center", va="bottom", fontweight="bold")
+plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "7_mae_rmse_harga_wajar.png"), dpi=300); plt.close(fig)
+
+# --- 8. [BARU] RMSE Ordinal per Algoritma Classifier ---
+fig, ax = plt.subplots(figsize=(10, 5))
+ax.bar(df_metrik["Model"], df_metrik["RMSE_Ordinal"], color="#7C3AED")
+ax.set_ylabel("RMSE Ordinal (0 = sempurna)")
+ax.set_title("RMSE Ordinal per Algoritma (Cepat=0, Sedang=1, Lambat=2)", fontsize=12, pad=10)
+ax.set_xticklabels(df_metrik["Model"], rotation=15, ha="right")
+for i, v in enumerate(df_metrik["RMSE_Ordinal"]):
+    ax.text(i, v, f"{v:.3f}", ha="center", va="bottom", fontweight="bold")
+plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "8_rmse_ordinal_classifier.png"), dpi=300); plt.close(fig)
 
 df_metrik.to_csv(os.path.join(OUTPUT_DIR, "ringkasan_metrik_klasifikasi.csv"), index=False)
 print(f"[SELESAI] Grafik & ringkasan disimpan di '{OUTPUT_DIR}/'.")
