@@ -1,316 +1,262 @@
 """
-AutoLiquid DSS: Pelatihan Model Klasifikasi Likuiditas (Cepat/Sedang/Lambat)
-Arsitektur: Proxy Labeling (OOF Price Deviation, data-driven) + Classifier ML
+AutoLaku: Pelatihan Model Klasifikasi Kecepatan Laku (Cepat/Sedang/Lambat)
+Arsitektur: Harga Wajar (regresi log-harga + fallback usia) -> Deviasi Harga
+            -> Label Proxy (tertile) -> Classifier ML
 
-Catatan Metodologi:
-  Dataset OLX tidak menyediakan status "terjual" atau tanggal iklan turun
-  (sudah difilter oleh platform), sehingga label likuiditas TIDAK BISA
-  diperoleh langsung dari observasi historis. Sebagai gantinya, label
-  dibentuk memakai pendekatan proxy/weak-labeling yang data-driven:
-
-  1. Estimasi "harga wajar" tiap unit dihitung memakai prediksi
-     out-of-fold (cross_val_predict, K-Fold) dari model regresi harga --
-     prediksi harga wajar tiap baris TIDAK dilatih dari baris itu
-     sendiri, sehingga tidak bocor (data leakage).
-  2. Deviasi harga_aktual terhadap harga_wajar_oof dihitung utk seluruh
-     dataset, lalu dibagi 3 kelas memakai TERTILE (persentil 33/67) dari
-     distribusi deviasi tsb -- bukan angka ambang bebas -- supaya
-     proporsi kelas seimbang & berdasar pada sebaran data itu sendiri.
-  3. Sinyal tambahan (km/tahun tinggi & tidak ada garansi) menurunkan
-     kelas "Cepat" jadi "Sedang" -- asumsi domain bahwa unit dgn
-     pemakaian sangat tinggi tanpa garansi lebih sulit laku meski murah.
-  4. Classifier ML kemudian DILATIH utk memprediksi label proxy ini,
-     sehingga hasil akhirnya model klasifikasi yg dievaluasi dgn
-     accuracy/F1/confusion matrix -- bukan aturan if-else manual.
-
-  KETERBATASAN PENTING: label bersifat proxy, bukan status "terjual"
-  historis sebenarnya. Selain itu, dataset sangat timpang antara mobil
-  baru & lama (lihat diagnostik kecukupan sampel di bawah) -- kombinasi
-  merek+model+usia yang jarang muncul di data TIDAK bisa diprediksi
-  dengan andal walau modelnya sudah benar. Ambang & mekanisme peringatan
-  keyakinan rendah untuk kasus ini ada di processing.py & diterapkan
-  saat prediksi di test_prediksi_klasifikasi.py.
+Catatan metodologi:
+  Data "terjual" tidak tersedia (difilter OLX), sehingga label bersifat PROXY:
+  1. Harga wajar tiap iklan dihitung out-of-fold (tanpa membaca iklan itu
+     sendiri). Kategori bersampel sedikit memakai regresi usia leave-one-out.
+  2. Deviasi harga iklan terhadap harga wajar dibagi 3 kelas dgn TERTILE
+     (persentil 33/67), bukan ambang buatan.
+  3. Unit berkilometer sangat tinggi & tanpa garansi diturunkan dari Cepat
+     ke Sedang.
+  4. Classifier dilatih dgn fitur unit + deviasi harga, sehingga vonis
+     BERUBAH mengikuti rencana harga yang diketik penjual.
+  Karena label dibentuk dari deviasi harga, akurasi tinggi TIDAK membuktikan
+  vonis cocok dengan kenyataan. Validasi kasar: umur iklan (tanggal_posting).
+  Pemilihan model dibatasi pada model yang MONOTON: harga naik tidak boleh
+  membuat vonis jadi lebih cepat laku.
 """
 
-import os
-import pickle
+import os, json, pickle, warnings
 from datetime import datetime
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from scipy.stats import spearmanr
 
 from sklearn.model_selection import train_test_split, KFold, cross_val_predict
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
+from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix, classification_report
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier
+from sklearn.metrics import (accuracy_score, f1_score, precision_score, recall_score,
+                             confusion_matrix, classification_report, mean_absolute_percentage_error)
 
-try:
-    from processing import AMBANG_KEYAKINAN_SAMPEL
-except ImportError:
-    AMBANG_KEYAKINAN_SAMPEL = 15  # fallback jika processing.py tidak ditemukan di folder yang sama
+from processing import AMBANG_KEYAKINAN_SAMPEL, hitung_harga_wajar_fallback, klip_deviasi, DEVIASI_MIN, DEVIASI_MAX
 
-TANGGAL_HARI_INI = datetime.now().strftime("%d-%m-%Y")
-OUTPUT_DIR = f"output_klasifikasi_{TANGGAL_HARI_INI}"
+warnings.filterwarnings("ignore")
+OUTPUT_DIR = f"output_klasifikasi_{datetime.now().strftime('%d-%m-%Y')}"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 plt.style.use("seaborn-v0_8-whitegrid")
 
-print("Membaca dataset bersih...")
 file_dataset = "dataset_olx_bersih.csv"
 if not os.path.exists(file_dataset):
     raise FileNotFoundError(f"File '{file_dataset}' tidak ditemukan. Jalankan processing.py terlebih dahulu.")
-
 df = pd.read_csv(file_dataset)
 
 categorical_cols = ['merek', 'model', 'transmisi', 'tipe_penjual', 'ada_garansi']
 numerical_cols = ['tahun', 'jarak_tempuh', 'usia_mobil', 'km_per_tahun']
-fitur = categorical_cols + numerical_cols
-target_harga = 'harga'
+fitur_harga = categorical_cols + numerical_cols
+fitur_kls = fitur_harga + ['deviasi_persen']
+LABEL_ORDER = ["Cepat", "Sedang", "Lambat"]
+RANK = {l: i for i, l in enumerate(LABEL_ORDER)}
 
-df_model = df.dropna(subset=fitur + [target_harga]).copy().reset_index(drop=True)
-X = df_model[fitur]
-y_harga = df_model[target_harga]
+df_model = df.dropna(subset=fitur_harga + ['harga']).copy()   # index asli dipertahankan
+print(f"Total sampel: {len(df_model):,} baris")
 
-print(f"Total sampel : {len(df_model):,} baris")
+def buat_prep(num_cols):
+    return ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), categorical_cols),
+                              ('num', StandardScaler(), num_cols)])
 
-# --- Diagnostik kecukupan sampel (untuk dilaporkan di BAB Hasil/Keterbatasan) ---
-if 'jumlah_sampel_kategori' in df_model.columns:
-    n_rendah = int((df_model['jumlah_sampel_kategori'] < AMBANG_KEYAKINAN_SAMPEL).sum())
-    print(f"[DIAGNOSTIK] {n_rendah:,} dari {len(df_model):,} baris ({n_rendah/len(df_model)*100:.1f}%) berasal dari "
-          f"kombinasi merek+model+usia dgn sampel < {AMBANG_KEYAKINAN_SAMPEL} -- performa model utk segmen ini "
-          f"secara inheren kurang andal, terlepas dari algoritma yang dipakai.")
-
-preprocessor = ColumnTransformer(transformers=[
-    ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_cols),
-    ('num', StandardScaler(), numerical_cols)
-])
+def buat_regresor():
+    reg = TransformedTargetRegressor(
+        regressor=GradientBoostingRegressor(n_estimators=300, learning_rate=0.05, max_depth=4, random_state=42),
+        func=np.log1p, inverse_func=np.expm1)
+    return Pipeline([('prep', buat_prep(numerical_cols)), ('reg', reg)])
 
 # ============================================================
-# TAHAP 1: ESTIMASI HARGA WAJAR OUT-OF-FOLD (basis pembuatan label proxy)
+# TAHAP 1: HARGA WAJAR (OOF + fallback LOO utk sampel sedikit)
 # ============================================================
-print("\n" + "=" * 75)
-print("TAHAP 1: ESTIMASI HARGA WAJAR (OUT-OF-FOLD, TANPA DATA LEAKAGE)")
-print("=" * 75)
+print("\n" + "=" * 75 + "\nTAHAP 1: HARGA WAJAR (out-of-fold, log-harga, fallback usia)\n" + "=" * 75)
+oof = cross_val_predict(buat_regresor(), df_model[fitur_harga], df_model['harga'],
+                        cv=KFold(5, shuffle=True, random_state=42), n_jobs=-1)
+df_model['harga_wajar_model'] = np.clip(oof, 1_000_000, None)
 
-pipeline_harga_oof = Pipeline(steps=[
-    ('prep', preprocessor),
-    ('reg', RandomForestRegressor(n_estimators=150, max_depth=15, random_state=42, n_jobs=-1))
-])
+sampel_lain = df_model['jumlah_sampel_kategori'] - 1        # tidak menghitung baris itu sendiri
+final, sumber = [], []
+for idx, r in df_model.iterrows():
+    hw, sm = float(r['harga_wajar_model']), "model ML"
+    if sampel_lain[idx] < AMBANG_KEYAKINAN_SAMPEL:
+        hf, s = hitung_harga_wajar_fallback(df_model, r['merek'], r['model'], r['usia_mobil'], exclude_idx=idx)
+        if hf is not None:
+            hw, sm = hf, s
+    final.append(hw); sumber.append(sm)
+df_model['harga_wajar_final'] = final
+df_model['sumber_harga_wajar'] = sumber
 
-kfold = KFold(n_splits=5, shuffle=True, random_state=42)
-harga_wajar_oof = cross_val_predict(pipeline_harga_oof, X, y_harga, cv=kfold, n_jobs=-1)
-harga_wajar_oof = np.clip(harga_wajar_oof, a_min=1_000_000, a_max=None)
+mape_model = mean_absolute_percentage_error(df_model['harga'], df_model['harga_wajar_model']) * 100
+mape_final = mean_absolute_percentage_error(df_model['harga'], df_model['harga_wajar_final']) * 100
+print(f"Galat rata-rata (MAPE) harga wajar: hanya model ML {mape_model:.1f}% -> model+fallback {mape_final:.1f}%")
+print(df_model['sumber_harga_wajar'].value_counts().to_string())
 
-df_model['harga_wajar_oof'] = harga_wajar_oof
-df_model['deviasi_persen'] = ((df_model[target_harga] - df_model['harga_wajar_oof']) / df_model['harga_wajar_oof']) * 100
-
-print(f"Rentang deviasi harga: {df_model['deviasi_persen'].min():.1f}% s/d {df_model['deviasi_persen'].max():.1f}%")
-
-# Fit ulang model regresi harga di SELURUH data (dipakai sbg info "harga
-# wajar" di aplikasi akhir -- terpisah dari proses pelabelan di atas)
-pipeline_harga_final = Pipeline(steps=[
-    ('prep', preprocessor),
-    ('reg', RandomForestRegressor(n_estimators=150, max_depth=15, random_state=42, n_jobs=-1))
-])
-pipeline_harga_final.fit(X, y_harga)
+regresi_final = buat_regresor().fit(df_model[fitur_harga], df_model['harga'])
 with open("model_regresi_harga.pkl", "wb") as f:
-    pickle.dump(pipeline_harga_final, f)
-print("[INFO] Model regresi harga (referensi) disimpan ke 'model_regresi_harga.pkl'")
+    pickle.dump(regresi_final, f)
 
 # ============================================================
-# TAHAP 2: PEMBENTUKAN LABEL LIKUIDITAS (TERTILE, DATA-DRIVEN)
+# TAHAP 2: LABEL PROXY (TERTILE)
 # ============================================================
-print("\n" + "=" * 75)
-print("TAHAP 2: PEMBENTUKAN LABEL PROXY LIKUIDITAS (TERTILE)")
-print("=" * 75)
+print("\n" + "=" * 75 + "\nTAHAP 2: LABEL PROXY LIKUIDITAS (TERTILE)\n" + "=" * 75)
+df_model['deviasi_persen'] = ((df_model['harga'] - df_model['harga_wajar_final'])
+                              / df_model['harga_wajar_final'] * 100).clip(DEVIASI_MIN, DEVIASI_MAX)
+q33, q67 = df_model['deviasi_persen'].quantile([0.33, 0.67])
+print(f"Ambang tertile deviasi -> Q33: {q33:.2f}% | Q67: {q67:.2f}%")
 
-q33 = df_model['deviasi_persen'].quantile(0.33)
-q67 = df_model['deviasi_persen'].quantile(0.67)
-print(f"Ambang tertile deviasi harga -> Q33: {q33:.2f}% | Q67: {q67:.2f}%")
-
-def label_dasar(dev):
-    if dev <= q33:
-        return "Cepat"
-    elif dev <= q67:
-        return "Sedang"
-    else:
-        return "Lambat"
-
-df_model['status_likuiditas'] = df_model['deviasi_persen'].apply(label_dasar)
-
-mask_turun = (
-    (df_model['status_likuiditas'] == "Cepat") &
-    (df_model['km_per_tahun'] > 30000) &
-    (df_model['ada_garansi'] == 'Tidak')
-)
-df_model.loc[mask_turun, 'status_likuiditas'] = "Sedang"
-
-print("Distribusi label proxy:")
-print(df_model['status_likuiditas'].value_counts())
+df_model['status_likuiditas'] = np.where(df_model['deviasi_persen'] <= q33, "Cepat",
+                                np.where(df_model['deviasi_persen'] <= q67, "Sedang", "Lambat"))
+turun = ((df_model['status_likuiditas'] == "Cepat") & (df_model['km_per_tahun'] > 30000)
+         & (df_model['ada_garansi'] == 'Tidak'))
+df_model.loc[turun, 'status_likuiditas'] = "Sedang"
+print(df_model['status_likuiditas'].value_counts().to_string())
 
 # ============================================================
-# TAHAP 3: TRAINING CLASSIFIER SUNGGUHAN UNTUK MEMPREDIKSI LABEL
+# TAHAP 3: CLASSIFIER (dengan uji monotonisitas terhadap harga)
 # ============================================================
-print("\n" + "=" * 75)
-print("TAHAP 3: PELATIHAN & EVALUASI CLASSIFIER LIKUIDITAS")
-print("=" * 75)
+print("\n" + "=" * 75 + "\nTAHAP 3: PELATIHAN & EVALUASI CLASSIFIER\n" + "=" * 75)
+X, y = df_model[fitur_kls], df_model['status_likuiditas']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-X_cls = df_model[fitur]
-y_cls = df_model['status_likuiditas']
+def pelanggaran_monoton(pipe, X_ref, n=300):
+    """Persentase unit yang vonisnya menjadi LEBIH CEPAT saat harga dinaikkan."""
+    sampel = X_ref.sample(min(n, len(X_ref)), random_state=1)
+    grid = np.linspace(-80, 250, 34)
+    besar = sampel.loc[sampel.index.repeat(len(grid))].copy()
+    besar['deviasi_persen'] = np.tile(grid, len(sampel))
+    rank = np.array([RANK[p] for p in pipe.predict(besar)]).reshape(len(sampel), len(grid))
+    return float((np.diff(rank, axis=1) < 0).any(axis=1).mean() * 100)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X_cls, y_cls, test_size=0.2, random_state=42, stratify=y_cls
-)
-
-classifiers = {
-    "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
-    "Decision Tree": DecisionTreeClassifier(max_depth=12, random_state=42),
+kandidat = {
+    "Logistic Regression": LogisticRegression(max_iter=2000, random_state=42),
+    "Decision Tree": DecisionTreeClassifier(max_depth=10, random_state=42),
     "Random Forest": RandomForestClassifier(n_estimators=200, max_depth=15, random_state=42, n_jobs=-1),
-    "Gradient Boosting": GradientBoostingClassifier(n_estimators=150, learning_rate=0.1, max_depth=5, random_state=42),
+    "Gradient Boosting": GradientBoostingClassifier(n_estimators=150, learning_rate=0.1, max_depth=4, random_state=42),
 }
+def rerata_keyakinan_puncak(pipe, X_ref):
+    """Rata-rata probabilitas kelas yang dipilih model (mendekati 1.0 terus-menerus
+    = tanda model overconfident, mis. Decision Tree tunggal yang tiap daunnya
+    murni satu kelas -> keyakinan 100% padahal belum tentu benar)."""
+    clf = pipe.named_steps['clf']
+    if not hasattr(clf, "predict_proba"):
+        return np.nan
+    return float(pipe.predict_proba(X_ref).max(axis=1).mean())
 
-hasil_metrik = []
-trained_pipelines = {}
-best_model_name, best_model_pipeline, best_f1 = None, None, -np.inf
-label_order = ["Cepat", "Sedang", "Lambat"]
+hasil, pipes = [], {}
+for nama, clf in kandidat.items():
+    p = Pipeline([('prep', buat_prep(numerical_cols + ['deviasi_persen'])), ('clf', clf)]).fit(X_train, y_train)
+    yp = p.predict(X_test)
+    langgar = pelanggaran_monoton(p, X_test)
+    keyakinan = rerata_keyakinan_puncak(p, X_test)
+    pipes[nama] = (p, yp)
+    hasil.append({"Model": nama, "Accuracy": accuracy_score(y_test, yp),
+                  "F1_Macro": f1_score(y_test, yp, average='macro'),
+                  "Precision_Macro": precision_score(y_test, yp, average='macro', zero_division=0),
+                  "Recall_Macro": recall_score(y_test, yp, average='macro', zero_division=0),
+                  "Pelanggaran_Monoton_%": langgar, "Rerata_Keyakinan_Puncak": keyakinan})
+    print(f"{nama:20s} acc {hasil[-1]['Accuracy']:.4f} | F1 {hasil[-1]['F1_Macro']:.4f} | "
+          f"pelanggaran monoton {langgar:.1f}% | rerata keyakinan puncak {keyakinan:.3f}")
 
-for nama_model, clf in classifiers.items():
-    pipeline = Pipeline(steps=[('prep', preprocessor), ('clf', clf)])
-    pipeline.fit(X_train, y_train)
-    y_pred = pipeline.predict(X_test)
-    trained_pipelines[nama_model] = (pipeline, y_pred)
+df_metrik = pd.DataFrame(hasil)
 
-    acc = accuracy_score(y_test, y_pred)
-    f1_macro = f1_score(y_test, y_pred, average='macro')
-    prec_macro = precision_score(y_test, y_pred, average='macro', zero_division=0)
-    rec_macro = recall_score(y_test, y_pred, average='macro', zero_division=0)
+# Kriteria pemilihan model, berurutan:
+#  1) HARUS monoton terhadap harga (0% pelanggaran) -- syarat mutlak.
+#  2) HARUS tidak overconfident: model tunggal (Decision Tree) sering
+#     menghasilkan probabilitas 0%/100% karena satu daun murni satu kelas --
+#     itu bukan bukti "sangat yakin", hanya artefak algoritma. Model
+#     ensemble (Random Forest/Gradient Boosting) & Logistic Regression
+#     merata-ratakan banyak estimator/kelas sehingga keyakinannya lebih wajar.
+#     Ambang > 0.97 dianggap overconfident & dihindari kalau ada alternatif.
+#  3) Di antara yang lolos (1) & (2), pilih F1-macro tertinggi.
+monoton = df_metrik[df_metrik["Pelanggaran_Monoton_%"] == 0]
+if monoton.empty:
+    monoton = df_metrik.sort_values("Pelanggaran_Monoton_%").head(1)
+    print("\n[PERINGATAN] Tidak ada model yang 100% monoton; dipilih yang paling mendekati.")
 
-    print(f"\nModel: {nama_model}")
-    print(f"  Accuracy          : {acc:.4f}")
-    print(f"  F1-Score (macro)  : {f1_macro:.4f}")
-    print(f"  Precision (macro) : {prec_macro:.4f}")
-    print(f"  Recall (macro)    : {rec_macro:.4f}")
+wajar = monoton[monoton["Rerata_Keyakinan_Puncak"] <= 0.97]
+pool = wajar if len(wajar) else monoton
+if wajar.empty and len(monoton) > 1:
+    print("[INFO] Semua model monoton overconfident (keyakinan puncak > 0.97); "
+          "dipilih F1-macro terbaik dari seluruh model monoton apa adanya.")
 
-    hasil_metrik.append({
-        "Model": nama_model, "Accuracy": acc, "F1_Macro": f1_macro,
-        "Precision_Macro": prec_macro, "Recall_Macro": rec_macro
-    })
-
-    if f1_macro > best_f1:
-        best_f1, best_model_name, best_model_pipeline = f1_macro, nama_model, pipeline
-
-print("\n" + "=" * 75)
-print(f"Model Classifier Terbaik Terpilih: {best_model_name} (F1-Macro: {best_f1:.4f})")
-print("=" * 75)
-print("\nClassification Report (model terbaik):")
-_, y_pred_best = trained_pipelines[best_model_name]
-print(classification_report(y_test, y_pred_best, labels=label_order))
-
-df_metrik = pd.DataFrame(hasil_metrik)
+best_name = pool.sort_values("F1_Macro", ascending=False).iloc[0]["Model"]
+best_pipe, y_pred_best = pipes[best_name]
+print(f"\nModel terpilih: {best_name} (F1-macro terbaik di antara model yang monoton & tidak overconfident)")
+print(classification_report(y_test, y_pred_best, labels=LABEL_ORDER))
 
 with open("model_klasifikasi_likuiditas.pkl", "wb") as f:
-    pickle.dump(best_model_pipeline, f)
-print(f"[SUKSES] Model klasifikasi likuiditas tersimpan ke 'model_klasifikasi_likuiditas.pkl'")
+    pickle.dump(best_pipe, f)
+baris_terpilih = df_metrik[df_metrik["Model"] == best_name].iloc[0]
+meta = {"q33": float(q33), "q67": float(q67), "label_order": LABEL_ORDER, "model_klasifikasi": best_name,
+        "rerata_keyakinan_puncak": round(float(baris_terpilih["Rerata_Keyakinan_Puncak"]), 4),
+        "fitur_harga": fitur_harga, "fitur_klasifikasi": fitur_kls, "ambang_sampel": AMBANG_KEYAKINAN_SAMPEL,
+        "mape_harga_wajar_pct": round(mape_final, 2), "tanggal_latih": datetime.now().strftime("%Y-%m-%d")}
+json.dump(meta, open("autolaku_meta.json", "w"), indent=2)
+print("[SUKSES] Tersimpan: model_regresi_harga.pkl, model_klasifikasi_likuiditas.pkl, autolaku_meta.json")
 
 # ============================================================
-# VISUALISASI EVALUASI
+# VALIDASI KASAR LABEL PROXY: umur iklan & status terjual
 # ============================================================
-print(f"\nMenghasilkan grafik visualisasi ke folder '{OUTPUT_DIR}/'...")
+print("\n" + "=" * 75 + "\nVALIDASI KASAR LABEL PROXY\n" + "=" * 75)
+waktu = pd.to_datetime(df_model['tanggal_posting'], errors='coerce', utc=True)
+df_model['umur_iklan_hari'] = (waktu.max() - waktu).dt.total_seconds() / 86400
+ok = df_model['umur_iklan_hari'].notna()
+rho, pval = spearmanr(df_model.loc[ok, 'deviasi_persen'], df_model.loc[ok, 'umur_iklan_hari'])
+rata_umur = df_model[ok].groupby('status_likuiditas')['umur_iklan_hari'].mean().reindex(LABEL_ORDER)
+print(f"Korelasi Spearman deviasi harga vs umur iklan: rho={rho:.3f} (p={pval:.3g})")
+print("Rata-rata umur iklan (hari) per label:\n" + rata_umur.round(1).to_string())
+print("Interpretasi: label 'Lambat' seharusnya beriklan lebih lama. Umur iklan hanyalah pendekatan "
+      "(iklan bisa di-bump), bukan bukti terjual.")
+n_terjual = int((df_model['status_iklan_terjual'] == 'Terjual').sum()) if 'status_iklan_terjual' in df_model else 0
+print(f"Iklan bertanda 'Terjual' di dataset: {n_terjual} baris -> terlalu sedikit dipakai sebagai validasi.")
 
-# --- 1. Komparasi Accuracy & F1-Macro Semua Model ---
-fig, ax = plt.subplots(figsize=(10, 5))
-x = np.arange(len(df_metrik))
-lebar = 0.35
-ax.bar(x - lebar/2, df_metrik["Accuracy"], lebar, label="Accuracy", color="#2563EB")
-ax.bar(x + lebar/2, df_metrik["F1_Macro"], lebar, label="F1-Macro", color="#059669")
-ax.set_ylim(0, 1.05)
-ax.set_xticks(x)
-ax.set_xticklabels(df_metrik["Model"], rotation=15, ha="right", fontsize=10, fontweight="bold")
-ax.set_title("Komparasi Performa Algoritma Klasifikasi Likuiditas", fontsize=13, pad=12)
-ax.legend()
-plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, "1_komparasi_metrik_klasifikasi.png"), dpi=300)
-plt.close(fig)
+# ============================================================
+# VISUALISASI
+# ============================================================
+fig, ax = plt.subplots(figsize=(10, 5)); x = np.arange(len(df_metrik))
+ax.bar(x - .175, df_metrik["Accuracy"], .35, label="Accuracy", color="#2563EB")
+ax.bar(x + .175, df_metrik["F1_Macro"], .35, label="F1-Macro", color="#059669")
+ax.set_xticks(x); ax.set_xticklabels(df_metrik["Model"], rotation=15, ha="right"); ax.set_ylim(0, 1.05)
+ax.set_title("Komparasi Algoritma Klasifikasi AutoLaku"); ax.legend(); plt.tight_layout()
+plt.savefig(os.path.join(OUTPUT_DIR, "1_komparasi_metrik_klasifikasi.png"), dpi=300); plt.close(fig)
 
-# --- 2. Confusion Matrix (Model Terbaik) ---
-cm = confusion_matrix(y_test, y_pred_best, labels=label_order)
-fig, ax = plt.subplots(figsize=(6, 5))
-im = ax.imshow(cm, cmap="Blues")
-ax.set_xticks(range(len(label_order)))
-ax.set_yticks(range(len(label_order)))
-ax.set_xticklabels(label_order)
-ax.set_yticklabels(label_order)
-ax.set_xlabel("Prediksi")
-ax.set_ylabel("Aktual (label proxy)")
-ax.set_title(f"Confusion Matrix — {best_model_name}", fontsize=13, pad=10)
-for i in range(len(label_order)):
-    for j in range(len(label_order)):
-        ax.text(j, i, str(cm[i, j]), ha="center", va="center",
-                 color="white" if cm[i, j] > cm.max() / 2 else "black", fontweight="bold")
-fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, "2_confusion_matrix.png"), dpi=300)
-plt.close(fig)
+cm = confusion_matrix(y_test, y_pred_best, labels=LABEL_ORDER)
+fig, ax = plt.subplots(figsize=(6, 5)); im = ax.imshow(cm, cmap="Blues")
+ax.set_xticks(range(3)); ax.set_yticks(range(3)); ax.set_xticklabels(LABEL_ORDER); ax.set_yticklabels(LABEL_ORDER)
+ax.set_xlabel("Prediksi"); ax.set_ylabel("Aktual (label proxy)"); ax.set_title(f"Confusion Matrix - {best_name}")
+for i in range(3):
+    for j in range(3):
+        ax.text(j, i, cm[i, j], ha="center", va="center", color="white" if cm[i, j] > cm.max() / 2 else "black")
+plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "2_confusion_matrix.png"), dpi=300); plt.close(fig)
 
-# --- 3. Distribusi Kelas Label Proxy ---
-fig, ax = plt.subplots(figsize=(7, 5))
-counts = df_model['status_likuiditas'].value_counts().reindex(label_order)
-ax.bar(counts.index, counts.values, color=["#059669", "#F59E0B", "#DC2626"])
-ax.set_ylabel("Jumlah Unit")
-ax.set_title("Distribusi Label Proxy Likuiditas (Hasil Tertile)", fontsize=13, pad=10)
-for i, v in enumerate(counts.values):
-    ax.text(i, v, f"{v:,}", ha="center", va="bottom", fontweight="bold")
-plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, "3_distribusi_label_proxy.png"), dpi=300)
-plt.close(fig)
+fig, ax = plt.subplots(figsize=(7, 5)); cnt = df_model['status_likuiditas'].value_counts().reindex(LABEL_ORDER)
+ax.bar(cnt.index, cnt.values, color=["#059669", "#F59E0B", "#DC2626"]); ax.set_title("Distribusi Label Proxy (Tertile)")
+plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "3_distribusi_label_proxy.png"), dpi=300); plt.close(fig)
 
-# --- 4. Feature Importance Top 15 (jika tersedia) ---
-clf_final = best_model_pipeline.named_steps['clf']
+clf_final = best_pipe.named_steps['clf']
 if hasattr(clf_final, "feature_importances_"):
-    importances = clf_final.feature_importances_
-    nama_fitur = best_model_pipeline.named_steps['prep'].get_feature_names_out()
-    df_imp = pd.DataFrame({"Fitur": nama_fitur, "Importance": importances}).sort_values("Importance", ascending=False).head(15)
+    imp = pd.DataFrame({"Fitur": best_pipe.named_steps['prep'].get_feature_names_out(),
+                        "Importance": clf_final.feature_importances_}).sort_values("Importance", ascending=False).head(15)
+    fig, ax = plt.subplots(figsize=(10, 6)); ax.barh(imp["Fitur"][::-1], imp["Importance"][::-1], color="#0D9488")
+    ax.set_title(f"15 Fitur Terpenting - {best_name}"); plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, "4_feature_importance_klasifikasi.png"), dpi=300); plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.barh(df_imp["Fitur"][::-1], df_imp["Importance"][::-1], color="#0D9488")
-    ax.set_xlabel("Skor Kepentingan Relatif (Feature Importance)", fontsize=11)
-    ax.set_title(f"15 Fitur Paling Berpengaruh — {best_model_name}", fontsize=13, pad=10)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, "4_feature_importance_klasifikasi.png"), dpi=300)
-    plt.close(fig)
+sampel_test = df_model.loc[X_test.index, 'jumlah_sampel_kategori'] - 1
+benar = (y_test.values == y_pred_best); rendah = (sampel_test < AMBANG_KEYAKINAN_SAMPEL).values
+akurasi = [benar[rendah].mean() if rendah.any() else np.nan, benar[~rendah].mean() if (~rendah).any() else np.nan]
+print(f"\nAkurasi kategori sampel < {AMBANG_KEYAKINAN_SAMPEL}: {akurasi[0]:.2%} | sampel >= {AMBANG_KEYAKINAN_SAMPEL}: {akurasi[1]:.2%}")
+fig, ax = plt.subplots(figsize=(6, 5)); ax.bar([f"< {AMBANG_KEYAKINAN_SAMPEL}\n(keyakinan rendah)", f">= {AMBANG_KEYAKINAN_SAMPEL}\n(cukup)"],
+                                               akurasi, color=["#DC2626", "#059669"]); ax.set_ylim(0, 1.05)
+ax.set_title("Akurasi per Kecukupan Sampel"); plt.tight_layout()
+plt.savefig(os.path.join(OUTPUT_DIR, "5_akurasi_per_kecukupan_sampel.png"), dpi=300); plt.close(fig)
 
-# --- 5. [BARU] Akurasi Model Dipecah per Tingkat Kecukupan Sampel ---
-if 'jumlah_sampel_kategori' in df_model.columns:
-    idx_test = X_test.index
-    sampel_test = df_model.loc[idx_test, 'jumlah_sampel_kategori']
-    benar = (y_test.values == y_pred_best)
-    grup_rendah = sampel_test < AMBANG_KEYAKINAN_SAMPEL
-    akurasi_rendah = benar[grup_rendah.values].mean() if grup_rendah.sum() > 0 else np.nan
-    akurasi_cukup = benar[~grup_rendah.values].mean() if (~grup_rendah).sum() > 0 else np.nan
-
-    print(f"\n[DIAGNOSTIK] Akurasi pada data uji, dipecah per kecukupan sampel:")
-    print(f"  Sampel kategori < {AMBANG_KEYAKINAN_SAMPEL} (keyakinan rendah) : {akurasi_rendah:.2%} (n={int(grup_rendah.sum())})")
-    print(f"  Sampel kategori >= {AMBANG_KEYAKINAN_SAMPEL} (keyakinan cukup) : {akurasi_cukup:.2%} (n={int((~grup_rendah).sum())})")
-
-    fig, ax = plt.subplots(figsize=(6, 5))
-    label_grup = [f"Sampel < {AMBANG_KEYAKINAN_SAMPEL}\n(keyakinan rendah)", f"Sampel >= {AMBANG_KEYAKINAN_SAMPEL}\n(keyakinan cukup)"]
-    nilai_grup = [akurasi_rendah, akurasi_cukup]
-    warna = ["#DC2626", "#059669"]
-    ax.bar(label_grup, nilai_grup, color=warna)
-    ax.set_ylim(0, 1.05)
-    ax.set_ylabel("Akurasi")
-    ax.set_title("Akurasi Classifier: Kategori Minim Sampel vs Cukup Sampel", fontsize=12, pad=10)
-    for i, v in enumerate(nilai_grup):
-        if not np.isnan(v):
-            ax.text(i, v, f"{v:.1%}", ha="center", va="bottom", fontweight="bold")
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, "5_akurasi_per_kecukupan_sampel.png"), dpi=300)
-    plt.close(fig)
+fig, ax = plt.subplots(figsize=(6, 5)); ax.bar(LABEL_ORDER, rata_umur.values, color=["#059669", "#F59E0B", "#DC2626"])
+ax.set_ylabel("Rata-rata umur iklan (hari)"); ax.set_title("Validasi Kasar: Umur Iklan per Label"); plt.tight_layout()
+plt.savefig(os.path.join(OUTPUT_DIR, "6_umur_iklan_per_label.png"), dpi=300); plt.close(fig)
 
 df_metrik.to_csv(os.path.join(OUTPUT_DIR, "ringkasan_metrik_klasifikasi.csv"), index=False)
-print(f"[SELESAI] Model dan seluruh visualisasi klasifikasi berhasil disimpan ke folder '{OUTPUT_DIR}/'.")
+print(f"[SELESAI] Grafik & ringkasan disimpan di '{OUTPUT_DIR}/'.")

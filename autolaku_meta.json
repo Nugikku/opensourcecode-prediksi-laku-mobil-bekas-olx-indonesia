@@ -1,0 +1,37 @@
+{
+  "q33": -8.074216113715558,
+  "q67": 7.671281369021012,
+  "label_order": [
+    "Cepat",
+    "Sedang",
+    "Lambat"
+  ],
+  "model_klasifikasi": "Random Forest",
+  "rerata_keyakinan_puncak": 0.6923,
+  "fitur_harga": [
+    "merek",
+    "model",
+    "transmisi",
+    "tipe_penjual",
+    "ada_garansi",
+    "tahun",
+    "jarak_tempuh",
+    "usia_mobil",
+    "km_per_tahun"
+  ],
+  "fitur_klasifikasi": [
+    "merek",
+    "model",
+    "transmisi",
+    "tipe_penjual",
+    "ada_garansi",
+    "tahun",
+    "jarak_tempuh",
+    "usia_mobil",
+    "km_per_tahun",
+    "deviasi_persen"
+  ],
+  "ambang_sampel": 15,
+  "mape_harga_wajar_pct": 19.49,
+  "tanggal_latih": "2026-09-29"
+}

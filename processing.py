@@ -1,5 +1,5 @@
 """
-Script Preprocessing Data Mobil Bekas OLX (AutoLiquid DSS Hybrid)
+AutoLaku - Script Preprocessing Data Mobil Bekas OLX
 Menggabungkan keandalan ekstraksi script lama dengan fitur analitis DSS.
 
 Riwayat revisi (lihat komentar berkode [FIX] / [BARU] di bawah):
@@ -29,6 +29,13 @@ Riwayat revisi (lihat komentar berkode [FIX] / [BARU] di bawah):
           tapi MENGUKUR & MENYIMPAN informasi kelangkaannya, supaya
           tahap training & aplikasi prediksi bisa memberi peringatan
           keyakinan rendah ke pengguna alih-alih diam-diam salah.
+  [BARU-2] ekstrak_fitur_teks(): SATU fungsi pembaca judul/deskripsi yang
+          dipakai training DAN aplikasi (dulu dua versi berbeda), kini
+          mengenali negasi ("tidak garansi", "tanpa garansi" = Tidak).
+  [BARU-3] hitung_harga_wajar_fallback() & pilih_harga_wajar(): utk
+          kombinasi bersampel sedikit, harga wajar dihitung dgn regresi
+          log-harga terhadap usia (per model, lalu per merek). Pada uji
+          leave-one-out galatnya lebih kecil daripada model ML utk kasus ini.
 """
 
 import os
@@ -93,6 +100,11 @@ MODEL_PER_MEREK = {
     "lexus": ["rx300"],
     "ford": ["everest", "ranger"],
     "volkswagen": ["tiguan"],
+    "kia": ["picanto", "rio", "soluto", "seltos", "sonet", "sportage", "carens", "grand carnival", "sorento"],
+    "mazda": ["mazda2", "mazda3", "cx3", "cx5", "cx8", "cx9", "biante"],
+    "chery": ["omoda 5", "omoda", "tiggo 8", "tiggo 7", "tiggo 5x", "tiggo cross", "tiggo", "j6t", "j6"],
+    "chevrolet": ["trailblazer", "captiva", "colorado", "trax", "spin", "cruze", "aveo", "orlando"],
+    "subaru": ["forester", "outback", "impreza", "brz", "wrx", "levorg", "xv"],
 }
 
 # [FIX-2] Alias/typo umum -> nama model baku. Dicek untuk merek yang relevan.
@@ -100,6 +112,13 @@ KAMUS_ALIAS_MODEL = {
     "inova": "innova",
     "innofa": "innova",
     "avanzaa": "avanza",
+    "mazda 2": "mazda2",
+    "mazda 3": "mazda3",
+    "cx-3": "cx3", "cx 3": "cx3",
+    "cx-5": "cx5", "cx 5": "cx5",
+    "cx-8": "cx8", "cx 8": "cx8",
+    "cx-9": "cx9", "cx 9": "cx9",
+    "carnival": "grand carnival",
 }
 
 # [FIX-2b] Beberapa nama model adalah PREFIX dari model lain yang lebih spesifik
@@ -228,6 +247,71 @@ def hitung_usia_bracket(usia_mobil, ukuran_bracket=BRACKET_USIA_TAHUN):
     per-tahun-persis (yang hampir pasti selalu sedikit)."""
     return (int(usia_mobil) // ukuran_bracket) * ukuran_bracket
 
+
+# ============================================================
+# 3b. EKSTRAKSI TEKS TERPADU (dipakai training & aplikasi) [BARU-2]
+# ============================================================
+NEGASI = {"tidak", "bukan", "tanpa", "belum", "no", "nggak"}
+POLA_GARANSI = r'\b(garansi|warranty|otospector|carsome|bebas banjir|bebas tabrak|service record|buku servis|catatan servis)\b'
+POLA_KREDIT = r'\b(tdp|dp minim|angsuran|cicilan|over kredit|paket kredit|kredit syariah)\b'
+DEVIASI_MIN, DEVIASI_MAX = -90.0, 300.0  # batas wajar deviasi harga (persen)
+
+def _ada_pola_tanpa_negasi(teks, pola):
+    """True jika pola ditemukan dan TIDAK didahului kata negasi (2 kata sebelumnya)."""
+    for m in re.finditer(pola, teks):
+        sebelum = teks[:m.start()].split()[-2:]
+        if any(w in NEGASI for w in sebelum):
+            continue
+        return True
+    return False
+
+def ekstrak_fitur_teks(judul, deskripsi):
+    judul_b = bersihkan_dan_normalisasi_teks(judul)
+    desk_b = bersihkan_dan_normalisasi_teks(deskripsi)
+    gabung = f"{judul_b} {desk_b}"
+    return {
+        'judul_bersih': judul_b,
+        'deskripsi_bersih': desk_b,
+        'ada_garansi': 'Ya' if _ada_pola_tanpa_negasi(gabung, POLA_GARANSI) else 'Tidak',
+        'indikasi_kredit_tdp': 1 if _ada_pola_tanpa_negasi(gabung, POLA_KREDIT) else 0,
+    }
+
+def klip_deviasi(nilai):
+    return float(np.clip(nilai, DEVIASI_MIN, DEVIASI_MAX))
+
+# ============================================================
+# 3c. HARGA WAJAR FALLBACK UNTUK KATEGORI BERSAMPEL SEDIKIT [BARU-3]
+# ============================================================
+def hitung_harga_wajar_fallback(df_ref, merek, model, usia, exclude_idx=None):
+    """Regresi log-harga ~ usia per model (min 5 data), lalu per merek (min 15).
+    exclude_idx dipakai saat training (leave-one-out) agar tidak bocor.
+    Return (harga, sumber) atau (None, None)."""
+    d = df_ref if exclude_idx is None else df_ref.drop(index=exclude_idx, errors='ignore')
+    for level, mask, minimal in (
+        ("model", (d['merek'] == merek) & (d['model'] == model), 5),
+        ("merek", d['merek'] == merek, 15),
+    ):
+        g = d[mask]
+        if len(g) < minimal:
+            continue
+        if g['usia_mobil'].nunique() >= 3:
+            b, a = np.polyfit(g['usia_mobil'], np.log(g['harga']), 1)
+            if b < 0:
+                pred = float(np.exp(a + b * usia))
+                pred = float(np.clip(pred, g['harga'].min() * 0.6, g['harga'].max() * 1.4))
+                return pred, f"regresi usia ({level})"
+        return float(g['harga'].median()), f"median ({level})"
+    return None, None
+
+def pilih_harga_wajar(harga_model, sampel, df_ref, merek, model, usia, exclude_idx=None):
+    """Sampel cukup -> pakai model ML. Sampel kurang -> pakai fallback bila tersedia."""
+    if sampel >= AMBANG_KEYAKINAN_SAMPEL:
+        return float(harga_model), "model ML"
+    hf, sumber = hitung_harga_wajar_fallback(df_ref, merek, model, usia, exclude_idx)
+    if hf is None:
+        return float(harga_model), "model ML (data terbatas)"
+    return hf, sumber
+
 # ============================================================
 # 4. PIPELINE UTAMA
 # ============================================================
@@ -270,23 +354,11 @@ def main():
     df['usia_mobil'] = df['tahun'].apply(lambda x: max(1, int(TAHUN_SEKARANG - x)))
     df['km_per_tahun'] = (df['jarak_tempuh'] / df['usia_mobil']).round().astype(int)
 
-    # 7. Ekstraksi Fitur Teks (Garansi & Indikasi TDP Kredit)
-    if 'deskripsi' in df.columns:
-        df['deskripsi_bersih'] = df['deskripsi'].apply(bersihkan_dan_normalisasi_teks)
-    else:
-        df['deskripsi_bersih'] = ""
-
-    if 'judul' in df.columns:
-        df['judul_bersih'] = df['judul'].apply(bersihkan_dan_normalisasi_teks)
-    else:
-        df['judul_bersih'] = ""
-
-    teks_gabung = df['judul_bersih'] + " " + df['deskripsi_bersih']
-    pola_garansi = r'\b(garansi|warranty|otospector|carsome|bebas banjir|bebas tabrak|service record|buku servis)\b'
-    df['ada_garansi'] = teks_gabung.apply(lambda x: 'Ya' if re.search(pola_garansi, str(x)) else 'Tidak')
-
-    pola_kredit = r'\b(tdp|dp minim|angsuran|cicilan|over kredit|paket kredit|kredit syariah)\b'
-    df['indikasi_kredit_tdp'] = teks_gabung.apply(lambda x: 1 if re.search(pola_kredit, str(x)) else 0)
+    # 7. Ekstraksi Fitur Teks (Garansi & Indikasi TDP Kredit) - fungsi terpadu [BARU-2]
+    fitur_teks = df.apply(lambda r: ekstrak_fitur_teks(r.get('judul'), r.get('deskripsi')),
+                          axis=1, result_type='expand')
+    for kolom in fitur_teks.columns:
+        df[kolom] = fitur_teks[kolom]
 
     # 8. Normalisasi Tipe Penjual
     if 'tipe_penjual_badge' in df.columns:
@@ -319,4 +391,4 @@ def main():
     print(f"\n[SUKSES] Dataset berhasil disimpan ke '{OUTPUT_FILE}'.")
 
 if __name__ == "__main__":
-    main()  
+    main()
