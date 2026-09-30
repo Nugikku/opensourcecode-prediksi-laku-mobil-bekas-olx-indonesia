@@ -20,7 +20,20 @@
 ## Pipeline Sistem
 
 ```
-DATA OLX MENTAH (dataset_olx_mentah.csv)
+┌─────────────────────────────────────────────────────────────────┐
+│  TAHAP 0 — SCRAPING  (scraping.py)                              │
+│                                                                 │
+│  • Buka halaman pencarian mobil bekas di OLX via browser        │
+│    otomatis (Playwright/asyncio)                                │
+│  • Intersepsi respons API OLX yang memuat data iklan (JSON)     │
+│  • Ambil per iklan: judul, merek, model, tahun, transmisi,      │
+│    harga, jarak_tempuh, tipe_penjual, deskripsi,                │
+│    tanggal_posting, lokasi                                      │
+│  • Scroll otomatis untuk memuat lebih banyak halaman            │
+│  • Simpan semua hasil ke dataset_olx_mentah.csv                 │
+│                                                                 │
+│  Output → dataset_olx_mentah.csv                                │
+└─────────────────────────────────────────────────────────────────┘
      │
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
