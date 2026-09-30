@@ -11,7 +11,7 @@
 | **Nama Produk** | AutoLaku |
 | **Masalah** | Penjual mobil bekas di OLX kesulitan menentukan apakah harga yang mereka pasang akan membuat mobilnya cepat terjual atau justru mengendap lama. Tidak ada alat bantu yang memberi umpan balik langsung berdasarkan data pasar nyata. |
 | **Pengguna** | Penjual mobil bekas perseorangan yang ingin memperkirakan daya saing harga iklannya sebelum dipasang. |
-| **Dataset** | Iklan mobil bekas yang di-scraping dari OLX Indonesia (`dataset_olx_mentah.csv`), berisi ribuan baris data iklan aktif. |
+| **Dataset** | Iklan mobil bekas yang di-scraping dari OLX Indonesia (`dataset_olx_mentah.csv`), berisi 3000 baris data iklan aktif. |
 | **Fungsi Utama** | Menerima input spesifikasi mobil dan rencana harga jual, lalu mengeluarkan prediksi apakah mobil tersebut akan **Cepat**, **Sedang**, atau **Lambat** laku — disertai estimasi harga wajar pasar. |
 | **Jenis Data Mining** | **Classification** (prediksi kategori kecepatan laku: Cepat / Sedang / Lambat), dengan regresi sebagai tahap awal untuk menghitung harga wajar yang menjadi fitur utama. |
 
@@ -85,24 +85,36 @@
      │
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  TAHAP 3 — PREDIKSI  (mesin_prediksi.py)                        │
+│  TAHAP 3 — CORE INFERENCE ENGINE (mesin_prediksi.py)            │
 │                                                                 │
-│  Input penjual: merek, model, tahun, transmisi, km,             │
-│                 rencana harga jual, teks deskripsi iklan        │
+│  Ini adalah CORE sistem. Semua logika inti — mulai dari         │
+│  validasi input, hitung harga wajar, hitung deviasi, panggil    │
+│  classifier, hingga menyusun peringatan — ada di sini, di       │
+│  dalam fungsi prediksi().                                       │
 │                                                                 │
-│  Proses:                                                        │
-│  1. Validasi & normalisasi semua input                          │
-│  2. Hitung harga wajar (model regresi + fallback bila perlu)    │
-│  3. Hitung deviasi_persen terhadap harga wajar                  │
-│  4. Prediksi kelas likuiditas + probabilitas tiap kelas         │
-│  5. Berikan peringatan bila data pembanding sedikit             │
+│  • muat_sistem() : Memuat kedua file model (.pkl), data meta,   │
+│    serta dataset untuk referensi.                               │
 │                                                                 │
-│  Output: STATUS (Cepat / Sedang / Lambat)                       │
-│          + Harga Wajar + Deviasi % + Probabilitas per kelas     │
+│  File antarmuka lain (app.py, test_prediksi_klasifikasi.py,     │
+│  test_sistem.py) cuma "kulit" luarnya saja. Mereka memanggil    │
+│  fungsi-fungsi di atas dan TIDAK menyimpan logika sendiri.      │
 └─────────────────────────────────────────────────────────────────┘
      │
-     ├──► Terminal       (test_prediksi_klasifikasi.py)
-     └──► Aplikasi Web   (app.py — Streamlit)
+     ▼ (Diimpor oleh)
+┌─────────────────────────────────────────────────────────────────┐
+│  TAHAP 4 — AUTOMATED TESTING (test_sistem.py)                   │
+│                                                                 │
+│  • Memastikan logika prediksi & validasi dari mesin_prediksi    │
+│    berjalan dengan benar (bebas bug) sebelum dirilis.           │
+└─────────────────────────────────────────────────────────────────┘
+     │
+     ▼ (Dan digunakan oleh)
+┌─────────────────────────────────────────────────────────────────┐
+│  TAHAP 5 — ANTARMUKA PENGGUNA                                   │
+│                                                                 │
+│  ├──► Terminal     : test_prediksi_klasifikasi.py               │
+│  └──► Aplikasi Web : app.py (Streamlit)                         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---

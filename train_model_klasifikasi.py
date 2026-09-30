@@ -280,6 +280,11 @@ median_umur = df_model[ok].groupby('status_likuiditas')['umur_iklan_hari'].media
 print("Median umur iklan (hari) per label:\n" + median_umur.round(1).to_string())
 print("Interpretasi: label 'Lambat' seharusnya beriklan lebih lama. Umur iklan hanyalah pendekatan "
       "(iklan bisa di-bump), bukan bukti terjual.")
+print(f"Rentang tanggal_posting di data: {waktu.min()} s/d {waktu.max()} "
+      f"({(waktu.max()-waktu.min()).days} hari) -- jauh melebihi batas 30 hari OLX utk iklan aktif "
+      "yg tidak diperbarui. Artinya tanggal_posting kemungkinan besar adalah tanggal iklan PERTAMA "
+      "DIBUAT, bukan tanggal TERAKHIR DIPERBARUI -- iklan yg sering di-bump tetap tercatat tanggal "
+      "lama. Validasi umur iklan ini karena itu TIDAK RELIABEL, hanya indikasi arah, bukan bukti.")
 n_terjual = int((df_model['status_iklan_terjual'] == 'Terjual').sum()) if 'status_iklan_terjual' in df_model else 0
 print(f"Iklan bertanda 'Terjual' di dataset: {n_terjual} baris -> terlalu sedikit dipakai sebagai validasi.")
 

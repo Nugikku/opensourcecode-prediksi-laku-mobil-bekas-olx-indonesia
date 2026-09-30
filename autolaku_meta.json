@@ -42,5 +42,5 @@
   "ablation_akurasi_tanpa_deviasi": 0.5375,
   "ablation_selisih_akurasi": 0.454,
   "catatan": "Label status_likuiditas dibentuk dari deviasi_persen, yang juga dipakai sbg fitur classifier -- akurasi tinggi sebagian bersifat sirkular, lihat ablation_*.",
-  "tanggal_latih": "2026-09-29"
+  "tanggal_latih": "2026-09-30"
 }
