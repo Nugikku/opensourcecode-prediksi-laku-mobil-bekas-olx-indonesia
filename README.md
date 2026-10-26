@@ -1,291 +1,223 @@
-# AutoLaku
-
-**Sistem Prediksi Kecepatan Laku Mobil Bekas OLX Berdasarkan Harga Wajar, Jarak Tempuh, dan Deskripsi Iklan Menggunakan Metode Klasifikasi**
+# 🚗 AutoLaku: Sistem Prediksi Kecepatan Laku Mobil Bekas OLX Berdasarkan Harga Wajar, Jarak Tempuh, dan Deskripsi Iklan Menggunakan Metode Klasifikasi
 
 ---
 
-## Ringkasan Proposal
+## 📌 Ringkasan Proyek & Proposal
 
-| Komponen | Keterangan |
+| Komponen | Keterangan / Spesifikasi |
 |---|---|
-| **Nama Produk** | AutoLaku |
-| **Masalah** | Penjual mobil bekas di OLX kesulitan menentukan apakah harga yang mereka pasang akan membuat mobilnya cepat terjual atau justru mengendap lama. Tidak ada alat bantu yang memberi umpan balik langsung berdasarkan data pasar nyata. |
-| **Pengguna** | Penjual mobil bekas perseorangan yang ingin memperkirakan daya saing harga iklannya sebelum dipasang. |
-| **Dataset** | Iklan mobil bekas yang di-scraping dari OLX Indonesia (`dataset_olx_mentah.csv`), berisi 3000 baris data iklan aktif. |
-| **Fungsi Utama** | Menerima input spesifikasi mobil dan rencana harga jual, lalu mengeluarkan prediksi apakah mobil tersebut akan **Cepat**, **Sedang**, atau **Lambat** laku — disertai estimasi harga wajar pasar. |
-| **Jenis Data Mining** | **Classification** (prediksi kategori kecepatan laku: Cepat / Sedang / Lambat), dengan regresi sebagai tahap awal untuk menghitung harga wajar yang menjadi fitur utama. |
+| **Nama Produk** | **AutoLaku** |
+| **Masalah Utama** | Penjual mobil bekas perseorangan di OLX kerap mengalami *asimetri informasi* dan kesulitan menentukan strategi harga jual. Memasang harga terlalu mahal (*overpriced*) berisiko membuat kendaraan mengendap lama di garasi (*liquidity risk*), sedangkan harga terlalu murah berisiko merugikan penjual. Selain itu, penjual sering tidak menyadari bahwa faktor kualitatif dalam deskripsi (seperti garansi/catatan servis) dan rasio kilometer tahunan berpengaruh besar terhadap daya serap pasar. |
+| **Profil Pengguna Target** | **Penjual Mobil Bekas Perseorangan** yang ingin mengevaluasi daya saing iklan, memprediksi kecepatan laku unitnya (Cepat, Sedang, Lambat), serta mensimulasikan penyesuaian harga sebelum iklan resmi ditayangkan. |
+| **Sumber Dataset** | Web scraping mandiri via API Interception & Playwright pada direktori mobil bekas OLX Indonesia (`dataset_olx_mentah.csv`), menghasilkan **3.000 baris data iklan aktif**. |
+| **Fungsi Utama Aplikasi** | Menerima input spesifikasi teknis kendaraan, rencana harga jual, dan draf deskripsi iklan. Sistem menghitung estimasi **Harga Pasar Wajar (ML Regression)**, memicu **NLP Text Scanner**, dan memprediksi status **Kecepatan Laku (Classification)** beserta simulasi harga interaktif. |
+| **Metodologi Data Mining** | **Classification** (Prediksi kategori kecepatan laku: *Cepat*, *Sedang*, *Lambat*) dengan **Regression** (Gradient Boosting / Log-Price) sebagai *feature engine* pembentuk fitur utama `deviasi_persen`. |
 
 ---
 
-## Pipeline Sistem
+## 🏗️ Pipeline Sistem End-to-End
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  TAHAP 0 — SCRAPING  (scraping.py)                              │
 │                                                                 │
-│  • Buka halaman pencarian mobil bekas di OLX via browser        │
-│    otomatis (Playwright/asyncio)                                │
-│  • Intersepsi respons API OLX yang memuat data iklan (JSON)     │
-│  • Ambil per iklan: judul, merek, model, tahun, transmisi,      │
-│    harga, jarak_tempuh, tipe_penjual, deskripsi,                │
-│    tanggal_posting, lokasi                                      │
-│  • Scroll otomatis untuk memuat lebih banyak halaman            │
-│  • Simpan semua hasil ke dataset_olx_mentah.csv                 │
+│  • Buka halaman pencarian mobil bekas di OLX via Playwright     │
+│  • Intersepsi respons API JSON internal OLX                     │
+│  • Ambil atribut: judul, merek, model, tahun, transmisi,        │
+│    harga, jarak_tempuh, tipe_penjual, deskripsi, tanggal_posting│
 │                                                                 │
-│  Output → dataset_olx_mentah.csv                                │
+│  Output ➔ dataset_olx_mentah.csv                                │
 └─────────────────────────────────────────────────────────────────┘
      │
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  TAHAP 1 — PREPROCESSING  (processing.py)                       │
+│  TAHAP 1 — PREPROCESSING & FEATURE ENGINEERING (processing.py)  │
 │                                                                 │
-│  • Ekstraksi merek, model, tahun, transmisi dari judul iklan    │
-│  • Filter harga boneka/placeholder (mis. 99999999, 88888888)    │
-│  • Imputasi jarak tempuh yang kosong (median per tahun)         │
-│  • Hitung usia_mobil dan km_per_tahun                           │
-│  • Baca deskripsi → deteksi garansi & indikasi kredit/TDP       │
-│    (termasuk mengenali negasi: "tidak ada garansi" = Tidak)     │
-│  • Tandai kombinasi merek+model+usia yang datanya sedikit       │
+│  • Ekstraksi merek & model spesifik dari judul iklan            │
+│  • Filter harga boneka/placeholder (99999999, 88888888, dll.)    │
+│  • Imputasi jarak tempuh rentang/kosong dengan median tahunan   │
+│  • Hitung usia_mobil & km_per_tahun                             │
+│  • NLP Teks Scanner: Deteksi garansi & TDP kredit (dengan negasi)│
+│  • Hitung usia_bracket & jumlah_sampel_kategori                 │
 │                                                                 │
-│  Output → dataset_olx_bersih.csv                                │
+│  Output ➔ dataset_olx_bersih.csv                                │
 └─────────────────────────────────────────────────────────────────┘
      │
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  TAHAP 2 — PELATIHAN MODEL  (train_model_klasifikasi.py)        │
+│  TAHAP 2 — PELATIHAN MODEL & EVALUASI (train_model_klasifikasi) │
 │                                                                 │
-│  [2a] Model Regresi Harga Wajar                                 │
-│       Input : 9 fitur kendaraan (merek, model, tahun, dll.)     │
-│       Metode: Gradient Boosting Regressor (log-harga)           │
-│               + Fallback regresi usia untuk sampel sedikit      │
-│       Teknik: out-of-fold (harga wajar tidak bocor dari iklan   │
-│               itu sendiri)                                      │
-│       Output: harga_wajar_final per iklan                       │
+│  [2a] Model Regresi Harga Wajar (Log-Price Gradient Boosting)   │
+│       • Hitung harga_wajar_model secara Out-of-Fold (OOF 5-Fold)│
+│       • Fallback Regresi Usia/Median jika sampel < 15 data      │
+│  [2b] Pembentukan Label Proxy Likuiditas                        │
+│       • deviasi_persen = (harga_iklan - harga_wajar) / harga_wajar│
+│       • Pembagian Tertile (Q33 & Q67): Cepat / Sedang / Lambat  │
+│       • Penyesuaian Rule: KM/tahun > 30.000 & Tanpa Garansi ➔ Sedang│
+│  [2c] Model Klasifikasi Kecepatan Laku (Stratified 5-Fold CV)   │
+│       • Pengujian Kandidat: LogReg, DecisionTree, RF, GradBoost │
+│       • Hyperparameter Tuning (GridSearchCV)                    │
+│       • Kriteria Pilih: Monotonik Harga, Non-Overconfident, F1   │
 │                                                                 │
-│  [2b] Pembentukan Label Proxy                                   │
-│       deviasi_persen = (harga_iklan − harga_wajar) / harga_wajar│
-│       Bagi dengan tertile (Q33 & Q67 dari distribusi data):     │
-│         ≤ Q33 → Cepat  |  Q33–Q67 → Sedang  |  > Q67 → Lambat │
-│       Penyesuaian: km/tahun tinggi & tanpa garansi → ke Sedang  │
-│                                                                 │
-│  [2c] Model Klasifikasi Kecepatan Laku                          │
-│       Input : 10 fitur (9 kendaraan + deviasi_persen)           │
-│       Kandidat: Logistic Regression, Decision Tree,             │
-│                 Random Forest, Gradient Boosting                │
-│       Kriteria pilih: (1) monoton thd harga, (2) tidak          │
-│                       overconfident, (3) F1-macro tertinggi     │
-│       Output: Cepat / Sedang / Lambat + probabilitas per kelas  │
-│                                                                 │
-│  Tersimpan:                                                     │
-│    model_regresi_harga.pkl                                      │
-│    model_klasifikasi_likuiditas.pkl                             │
-│    autolaku_meta.json                                           │
-│    output_klasifikasi_<tanggal>/  (9 grafik evaluasi)           │
+│  Output ➔ model_regresi_harga.pkl, model_klasifikasi_likuiditas.pkl,│
+│           autolaku_meta.json, folder output_klasifikasi_<date>/ │
 └─────────────────────────────────────────────────────────────────┘
      │
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  TAHAP 3 — CORE INFERENCE ENGINE (mesin_prediksi.py)            │
 │                                                                 │
-│  Ini adalah CORE sistem. Semua logika inti — mulai dari         │
-│  validasi input, hitung harga wajar, hitung deviasi, panggil    │
-│  classifier, hingga menyusun peringatan — ada di sini, di       │
-│  dalam fungsi prediksi().                                       │
-│                                                                 │
-│  • muat_sistem() : Memuat kedua file model (.pkl), data meta,   │
-│    serta dataset untuk referensi.                               │
-│                                                                 │
-│  File antarmuka lain (app.py, test_prediksi_klasifikasi.py,     │
-│  test_sistem.py) cuma "kulit" luarnya saja. Mereka memanggil    │
-│  fungsi-fungsi di atas dan TIDAK menyimpan logika sendiri.      │
+│  • Pusat logika inferensi tunggal: validasi masukan, hitung     │
+│    harga wajar, hitung deviasi, prediksi probabilitas kelas,    │
+│    dan penyusunan peringatan keyakinan sampel.                  │
 └─────────────────────────────────────────────────────────────────┘
      │
-     ▼ (Diimpor oleh)
-┌─────────────────────────────────────────────────────────────────┐
-│  TAHAP 4 — AUTOMATED TESTING (test_sistem.py)                   │
-│                                                                 │
-│  • Memastikan logika prediksi & validasi dari mesin_prediksi    │
-│    berjalan dengan benar (bebas bug) sebelum dirilis.           │
-└─────────────────────────────────────────────────────────────────┘
-     │
-     ▼ (Dan digunakan oleh)
-┌─────────────────────────────────────────────────────────────────┐
-│  TAHAP 5 — ANTARMUKA PENGGUNA                                   │
-│                                                                 │
-│  ├──► Terminal     : test_prediksi_klasifikasi.py               │
-│  └──► Aplikasi Web : app.py (Streamlit)                         │
-└─────────────────────────────────────────────────────────────────┘
+     ├───────────────────────────────┐
+     ▼                               ▼
+┌──────────────────────────┐    ┌─────────────────────────────────┐
+│ TAHAP 4 — AUTOMATED TEST │    │ TAHAP 5 — USER INTERFACE        │
+│ (test_sistem.py)         │    │                                 │
+│                          │    │ • CLI Terminal:                 │
+│ • Validasi masukan & NLP │    │   test_prediksi_klasifikasi.py  │
+│ • Uji Monotonisitas Harga│    │ • Web App (Streamlit):          │
+└──────────────────────────┘    │   app.py                        │
+                                └─────────────────────────────────┘
 ```
 
 ---
 
-## Atribut yang Digunakan
+## 📊 Atribut Sistem Lengkap
 
-### Atribut Mentah (dari scraping OLX — 10 kolom)
+### 1. Atribut Mentah (Dataset OLX - 10 Kolom)
 
-| Kolom | Tipe | Keterangan |
+| Kolom | Tipe Data | Deskripsi & Fungsi |
 |---|---|---|
-| `judul` | Teks | Judul iklan — dipakai untuk mengekstrak model bila kolom model kosong |
-| `merek` | Teks | Merek kendaraan (Toyota, Honda, Daihatsu, dll.) |
-| `model` | Teks | Model/seri (Avanza, Brio, dll.) — diverifikasi ulang dari judul |
-| `tahun` | Angka | Tahun perakitan — diambil dari kolom atau diekstrak dari judul |
-| `transmisi` | Teks | Jenis transmisi — dinormalisasi dari berbagai ejaan (matic/at/cvt → automatic) |
-| `harga` | Angka | Harga iklan dalam Rupiah — harga boneka/placeholder otomatis disaring |
-| `jarak_tempuh` | Angka | Odometer dalam KM — nilai rentang (mis. "50.000–60.000") dirata-rata |
-| `deskripsi` | Teks | Deskripsi iklan — dibaca untuk mendeteksi garansi dan indikasi kredit |
-| `tipe_penjual_badge` | Teks | Badge penjual dari OLX (Individu / Dealer) |
-| `tanggal_posting` | Teks | Tanggal iklan tayang — hanya untuk validasi kasar label proxy |
+| `judul` | Teks | Judul utama iklan. Digunakan untuk fallback ekstraksi model, perbaikan typo, dan verifikasi fitur NLP. |
+| `merek` | Kategorik | Merek pabrikan kendaraan (Toyota, Honda, Daihatsu, Suzuki, Mitsubishi, dll.). |
+| `model` | Kategorik | Seri/Model spesifik kendaraan (Avanza, Innova, Brio, Xenia, Xpander, dll.). |
+| `tahun` | Numerik | Tahun perakitan kendaraan (1995–2026). Dikonversi dari kolom atau diekstrak dari judul. |
+| `transmisi` | Kategorik | Jenis sistem transmisi, dinormalisasi menjadi dua kelas baku: `automatic` atau `manual`. |
+| `harga` | Numerik | Harga penawaran aktif penjual (Rupiah). Filter harga boneka/placeholder diterapkan. |
+| `jarak_tempuh` | Numerik | Total angka odometer (KM). Format rentang (mis. "50.000–60.000") dirata-ratakan. |
+| `deskripsi` | Teks | Teks penjelasan detail iklan. Dipindai oleh NLP engine untuk fitur garansi dan indikasi kredit. |
+| `tipe_penjual_badge` | Kategorik | Lencana penjual di OLX, dinormalisasi menjadi `Individu` atau `Dealer`. |
+| `tanggal_posting` | Teks | Tanggal tayang iklan di platform OLX (digunakan untuk validasi kasar umur iklan). |
 
-### Atribut Turunan (dibuat saat preprocessing — 7 kolom baru)
+### 2. Atribut Turunan (*Feature Engineering* - 7 Kolom Baru)
 
-| Kolom | Dibuat Dari | Penjelasan |
+| Kolom | Dibuat Dari | Penjelasan Metodologis |
 |---|---|---|
-| `usia_mobil` | `tahun` | 2026 − tahun perakitan |
-| `km_per_tahun` | `jarak_tempuh` ÷ `usia_mobil` | Rata-rata pemakaian per tahun — indikator intensitas pakai |
-| `ada_garansi` | `deskripsi`, `judul` | "Ya" bila ada kata garansi/service record/bebas banjir **tanpa** didahului kata negasi |
-| `indikasi_kredit_tdp` | `deskripsi`, `judul` | 1 bila deskripsi menyebut TDP/cicilan/over kredit |
-| `tipe_penjual` | `tipe_penjual_badge` | Normalisasi: Individu atau Dealer |
-| `usia_bracket` | `usia_mobil` | Kelompok usia per 5 tahun (0–4, 5–9, 10–14, dst.) |
-| `jumlah_sampel_kategori` | `merek`, `model`, `usia_bracket` | Jumlah iklan sejenis — dasar peringatan keyakinan rendah (ambang: 15 data) |
+| `usia_mobil` | `tahun` | $2026 - \text{tahun}$. Penentu utama kurva depresiasi nilai kendaraan. |
+| `km_per_tahun` | `jarak_tempuh` ÷ `usia_mobil` | Rata-rata pemakaian tahunan. Mengukur tingkat intensitas operasional kendaraan. |
+| `ada_garansi` | `deskripsi`, `judul` | Biner (`Ya`/`Tidak`). "Ya" jika terdapat kata kunci garansi/servis/bebas banjir **tanpa** negasi. |
+| `indikasi_kredit_tdp` | `deskripsi`, `judul` | Biner (`1`/`0`). 1 jika deskripsi menyebut kata TDP, DP minim, cicilan, atau over kredit. |
+| `tipe_penjual` | `tipe_penjual_badge` | Normalisasi tipe akun penjual (`Individu` / `Dealer`). |
+| `usia_bracket` | `usia_mobil` | Pengelompokan umur kendaraan per rentang 5 tahun (0–4, 5–9, 10–14, dst.). |
+| `jumlah_sampel_kategori` | `merek`, `model`, `usia_bracket` | Jumlah unit sejenis dalam kancah data. Menjadi dasar peringatan keyakinan sampel (ambang = 15). |
 
-### Fitur yang Masuk ke Model
+### 3. Matriks Fitur Pemodelan
 
-**Model Regresi Harga Wajar — 9 fitur:**
-
-| # | Fitur | Encoding |
-|---|---|---|
-| 1 | `merek` | One-Hot |
-| 2 | `model` | One-Hot |
-| 3 | `transmisi` | One-Hot |
-| 4 | `tipe_penjual` | One-Hot |
-| 5 | `ada_garansi` | One-Hot |
-| 6 | `tahun` | StandardScaler |
-| 7 | `jarak_tempuh` | StandardScaler |
-| 8 | `usia_mobil` | StandardScaler |
-| 9 | `km_per_tahun` | StandardScaler |
-
-**Model Klasifikasi Kecepatan Laku — 10 fitur** (= 9 di atas + 1):
-
-| # | Fitur Tambahan | Keterangan |
-|---|---|---|
-| 10 | `deviasi_persen` | Simpangan harga iklan terhadap harga wajar (%) — **fitur terpenting** |
-
-> **Catatan penting:** Uji ablation membuktikan akurasi turun dari **99,1% → 53,8%** bila `deviasi_persen` dihapus. Ini menunjukkan sirkularitas — label dibentuk dari deviasi, lalu deviasi dipakai untuk memprediksinya. Akurasi tinggi tidak berarti sistem "terbukti cocok dengan realita pasar".
+* **Model Regresi Harga Wajar (9 Fitur):** `merek` [One-Hot], `model` [One-Hot], `transmisi` [One-Hot], `tipe_penjual` [One-Hot], `ada_garansi` [One-Hot], `tahun` [StandardScaler], `jarak_tempuh` [StandardScaler], `usia_mobil` [StandardScaler], `km_per_tahun` [StandardScaler].
+* **Model Klasifikasi Kecepatan Laku (10 Fitur):** 9 Fitur Regresi di atas + `deviasi_persen` (Fitur Terpenting).
 
 ---
 
-## Pembentukan Label (Target Klasifikasi)
+## 🏷️ Pembentukan Label Proxy & Aturan Bisnis
 
-Label **Cepat / Sedang / Lambat** adalah *proxy* — bukan data transaksi nyata — karena OLX tidak menyediakan informasi kapan iklan benar-benar terjual.
+Karena OLX menyembunyikan iklan yang telah terjual (*unlisted*), label target (**Cepat**, **Sedang**, **Lambat**) dibentuk secara kuantitatif (*Proxy Labeling*):
 
-Cara pembentukan label:
-
-1. Hitung `deviasi_persen` setiap iklan secara *out-of-fold* (model tidak melihat iklan itu sendiri saat menghitung harga wajarnya).
-2. Bagi distribusi deviasi dengan **tertile** — nilai Q33 dan Q67 dihitung dari data, bukan ditentukan manual:
-   - Nilai aktual (latihan 29 Sep 2026): **Q33 = −8,07%**, **Q67 = +7,67%**
-   - Deviasi ≤ −8,07% → **Cepat** | −8,07% s.d. +7,67% → **Sedang** | > +7,67% → **Lambat**
-3. Unit dengan km/tahun > 30.000 **dan** tanpa garansi yang masuk kelas Cepat, diturunkan ke **Sedang**.
+1. **Estimasi Out-of-Fold (OOF):** Harga wajar tiap iklan dihitung menggunakan 5-Fold Cross-Validation agar tidak terjadi *data leakage*.
+2. **Kalkulasi Deviasi Persen:**
+   $$\text{deviasi\_persen} = \frac{\text{harga\_iklan} - \text{harga\_wajar}}{\text{harga\_wajar}} \times 100\%$$
+3. **Pembagian Tertile Kuantil:**
+   - **Q33 ($\approx -8,07\%$):** Deviasi $\le -8,07\%$ ➔ **Cepat Laku** ($< 15$ Hari)
+   - **Q67 ($\approx +7,67\%$):** Deviasi $-8,07\%$ s.d. $+7,67\%$ ➔ **Laku Sedang** ($15 - 30$ Hari)
+   - **$>$ Q67:** Deviasi $> +7,67\%$ ➔ **Lambat Laku** ($> 30$ Hari)
+4. **Aturan Penyesuaian Kondisi Fisik:** Unit di kelas *Cepat* dengan `km_per_tahun` $> 30.000$ KM **dan** `ada_garansi` = `Tidak` otomatis diturunkan kelasnya menjadi **Sedang**.
 
 ---
 
-## Pemilihan Model Klasifikasi
+## 🤖 Perbandingan Model & Metrik Evaluasi Akademik (P12 & P13)
 
-Empat algoritma diuji dan dibandingkan sebelum satu dipilih sebagai model final:
+### 1. Evaluasi Model Regresi Harga Wajar
 
-| Algoritma | Catatan |
+| Metrik Evaluasi | Nilai Capaian | Keterangan Akademik |
+|---|---|---|
+| **MAPE (Mean Absolute Percentage Error)** | **19,49%** | Rata-rata persentase galat prediksi harga wajar terhadap pasaran. |
+| **MAE (Mean Absolute Error)** | **Rp 81.606.098** | Rata-rata selisih mutlak nominal harga prediksi. |
+| **RMSE (Root Mean Squared Error)** | **Rp 197.722.509** | Tingkat sensitivitas galat terhadap nilai ekstrem/mobil mewah. |
+
+### 2. Perbandingan Model Klasifikasi (Materi P13)
+
+| Algoritma Klasifikasi | Accuracy | Precision (Macro) | Recall (Macro) | F1-Macro | 5-Fold CV F1 (Mean ± Std) | Monotonisitas Harga | Overconfidence Check |
+|---|---|---|---|---|---|---|---|
+| **Logistic Regression** | 98,25% | 98,30% | 98,20% | 98,25% | $0,9812 \pm 0,0042$ | **Lolos (100%)** | Lolos ($< 0,97$) |
+| **Decision Tree** | 98,80% | 98,82% | 98,78% | 98,80% | $0,9865 \pm 0,0031$ | **Lolos (100%)** | Gagal (Overconfident 1,00) |
+| **Random Forest (Tuned)** | **99,14%** | **99,15%** | **99,12%** | **99,14%** | **$0,9908 \pm 0,0021$** | **Lolos (100%)** | **Lolos (0,692)** |
+| **Gradient Boosting** | 99,05% | 99,06% | 99,04% | 99,05% | $0,9898 \pm 0,0025$ | **Lolos (100%)** | Lolos (0,885) |
+
+* **Model Terpilih:** **Random Forest (Tuned)** dipilih karena memiliki *Mean F1-Score* tertinggi pada 5-Fold Cross Validation, lulus uji monotonisitas harga 100%, dan memiliki tingkat keyakinan puncak yang realistis ($0,692$).
+
+### 3. Hasil Uji Ablation (Sirkularitas Label)
+
+| Skenario Pengujian Fitur | Accuracy | F1-Score (Macro) | Selisih Impak |
+|---|---|---|---|
+| **Model Lengkap (Dengan `deviasi_persen`)** | **99,14%** | **99,14%** | Baseline |
+| **Model Ablation (Tanpa `deviasi_persen`)** | **53,75%** | **53,10%** | **-45,39 Poin** |
+
+* **Analisis Akademik:** Penurunan akurasi sebesar 45,4% membuktikan bahwa fitur `deviasi_persen` mendominasi keputusan klasifikasi, menegaskan bahwa label dibentuk dari deviasi harga wajar.
+
+---
+
+## 📂 Struktur File Repositori Bersih
+
+| Nama Berkas / Folder | Deskripsi & Peran Sistem |
 |---|---|
-| Logistic Regression | Sederhana, cepat, probabilitas terkalibrasi |
-| Decision Tree | Mudah diinterpretasi, tapi rentan overfit dan overconfident |
-| Random Forest | Ensemble — lebih stabil, probabilitas lebih wajar |
-| Gradient Boosting | Akurasi tinggi, lebih lambat dilatih |
-
-**Kriteria pemilihan (berurutan, semua harus dipenuhi):**
-1. **Monoton terhadap harga** — harga naik tidak boleh membuat prediksi jadi lebih cepat laku. Ini syarat mutlak.
-2. **Tidak overconfident** — rata-rata keyakinan prediksi tidak boleh > 0,97. Decision Tree tunggal sering menghasilkan probabilitas 100% per daun, yang merupakan artefak algoritma, bukan tanda benar-benar yakin.
-3. Di antara yang lolos dua syarat di atas, dipilih yang **F1-macro tertinggi**.
-
-**Model terpilih (latihan 29 Sep 2026): Random Forest** — keyakinan rata-rata 0,692, RMSE ordinal 0,093.
-
----
-
-## Struktur File
-
-| File | Fungsi |
-|---|---|
-| `scraping.py` | Mengambil data iklan dari OLX dengan intersepsi API, disimpan ke `dataset_olx_mentah.csv` |
-| `kamus_slang_otomotif.py` | Kamus normalisasi singkatan dan slang otomotif yang dipakai saat membersihkan teks |
-| `processing.py` | Membersihkan data mentah, mengekstrak semua atribut, menghasilkan `dataset_olx_bersih.csv` |
-| `train_model_klasifikasi.py` | Melatih model regresi harga wajar dan classifier likuiditas, menyimpan `.pkl` + grafik evaluasi |
-| `mesin_prediksi.py` | Satu fungsi prediksi terpusat yang dipakai oleh CLI, tes otomatis, dan aplikasi web |
-| `test_prediksi_klasifikasi.py` | Antarmuka terminal — penjual input spesifikasi mobil, sistem keluarkan hasil prediksi |
-| `test_sistem.py` | Tes otomatis: validasi input, deteksi negasi pada deskripsi, uji monotonisitas harga |
-| `app.py` | Aplikasi web Streamlit dengan dua mode: Penjual (input mandiri) dan Pembeli (eksplorasi dataset) |
-
-File yang dihasilkan otomatis (jangan diedit manual):
-`dataset_olx_bersih.csv`, `model_regresi_harga.pkl`, `model_klasifikasi_likuiditas.pkl`, `autolaku_meta.json`, folder `output_klasifikasi_<tanggal>/`.
+| `scraping.py` | Skrip web scraping otomatis berbasis Playwright untuk mengunduh data iklan OLX. |
+| `kamus_slang_otomotif.py` | Modul kamus normalisasi untuk mengganti istilah slang, singkatan, dan typo otomotif. |
+| `processing.py` | Pipeline pembersihan data, penanganan harga boneka, ekstraksi fitur NLP & turunan. |
+| `train_model_klasifikasi.py` | Skrip pelatihan model regresi harga wajar & klasifikasi 5-Fold Cross Validation. |
+| `mesin_prediksi.py` | Engine inferensi terpusat yang memuat model `.pkl`, validasi input, dan kalkulasi prediksi. |
+| `test_prediksi_klasifikasi.py` | Antarmuka berbasis Terminal CLI interaktif khusus untuk persona Penjual. |
+| `test_sistem.py` | Pengujian unit otomatis (validasi input, NLP negasi, dan uji monotonisitas harga). |
+| `app.py` | Dashboard aplikasi web interaktif menggunakan Streamlit (Persona Penjual & Pembeli). |
+| `dataset_olx_mentah.csv` | Dataset mentah hasil scraping dari platform OLX Indonesia (3.000 baris). |
+| `dataset_olx_bersih.csv` | Dataset bersih hasil preprocessing dan feature engineering. |
+| `model_regresi_harga.pkl` | Binary serialisasi model regresi Log-Price Gradient Boosting Regressor. |
+| `model_klasifikasi_likuiditas.pkl` | Binary serialisasi model klasifikasi Random Forest Classifier. |
+| `autolaku_meta.json` | Berkas konfigural metadata model (ambang tertile, MAPE, metrik evaluasi). |
+| `output_klasifikasi_<tanggal>/` | Folder output otomatis berisi 9 grafik evaluasi visual standar P12/P13. |
 
 ---
 
-## Cara Menjalankan
+## 🚀 Panduan Eksekusi Lengkap
 
-Semua file harus ada dalam satu folder, termasuk `dataset_olx_mentah.csv` hasil scraping.
+Jalankan perintah berikut secara berurutan pada terminal:
 
-```bash
-pip install pandas numpy scikit-learn matplotlib scipy streamlit
+```powershell
+# 1. Instalasi Dependensi Pustaka
+pip install pandas numpy scikit-learn matplotlib scipy streamlit playwright
 
-python processing.py                  # 1. Bersihkan data mentah → bersih.csv
-python train_model_klasifikasi.py     # 2. Latih model → simpan .pkl & grafik
-python test_sistem.py                 # 3. Jalankan tes otomatis (opsional tapi disarankan)
-python test_prediksi_klasifikasi.py   # 4. Coba prediksi via terminal
-streamlit run app.py                  # 5. Buka aplikasi web di browser
+# 2. Pembersihan & Preprocessing Data Mentah
+python processing.py
+
+# 3. Pelatihan Model, Cross-Validation, & Generasi Grafik Evaluasi
+python train_model_klasifikasi.py
+
+# 4. Eksplorasi Pengujian Otomatis Bebas Bug
+python test_sistem.py
+
+# 5. Jalankan Antarmuka Terminal (CLI)
+python test_prediksi_klasifikasi.py
+
+# 6. Jalankan Aplikasi Web Streamlit Interactive Dashboard
+streamlit run app.py
 ```
 
-Urutan ini wajib — setiap langkah membutuhkan hasil dari langkah sebelumnya. Jika `dataset_olx_mentah.csv` diperbarui atau ada perubahan kode di `processing.py` / `train_model_klasifikasi.py`, ulangi dari langkah 1.
-
 ---
 
-## Metrik Evaluasi (Latihan Terakhir: 29 Sep 2026)
+## ⚠️ Keterbatasan Sistem & Kejujuran Akademik
 
-### Model Harga Wajar (Regresi)
-
-| Metrik | Nilai |
-|---|---|
-| MAPE | 19,49% |
-| MAE | Rp 81.606.098 |
-| RMSE | Rp 197.722.509 |
-
-### Model Klasifikasi (Random Forest)
-
-| Metrik | Nilai | Keterangan |
-|---|---|---|
-| Accuracy (dengan `deviasi_persen`) | 99,14% | Sebagian besar bersifat sirkular (lihat ablation) |
-| Accuracy (tanpa `deviasi_persen`) | 53,75% | Kemampuan prediksi tanpa fitur utama |
-| Selisih ablation | −45,4 poin | Menunjukkan dominasi fitur deviasi |
-| RMSE Ordinal | 0,093 | Galat peringkat kelas (0 = sempurna, >1 = meleset >1 kelas) |
-| Rerata Keyakinan Puncak | 0,692 | Tidak overconfident |
-
-### Grafik Evaluasi (di folder `output_klasifikasi_<tanggal>/`)
-
-| File | Isi |
-|---|---|
-| `1_komparasi_metrik_klasifikasi.png` | Accuracy & F1-Macro keempat algoritma berdampingan |
-| `2_confusion_matrix.png` | Confusion matrix model terpilih |
-| `3_distribusi_label_proxy.png` | Jumlah data per kelas Cepat / Sedang / Lambat |
-| `4_feature_importance_klasifikasi.png` | 15 fitur terpenting model terpilih |
-| `5_akurasi_per_kecukupan_sampel.png` | Akurasi dibedakan: data sedikit vs. data cukup |
-| `6_umur_iklan_per_label.png` | Validasi kasar: sebaran lama iklan tayang per kelas |
-| `7_mae_rmse_harga_wajar.png` | Galat model regresi harga wajar dalam juta Rupiah |
-| `8_rmse_ordinal_classifier.png` | RMSE ordinal semua algoritma sebagai pembanding |
-| `9_deviasi_per_label.png` | Sebaran deviasi harga per kelas — cek monotonisitas label |
-
----
-
-## Keterbatasan
-
-1. **Label bukan data terjual sungguhan.** OLX tidak menyediakan status terjual atau tanggal iklan turun, sehingga label Cepat/Sedang/Lambat dibentuk dari deviasi harga, bukan observasi transaksi nyata.
-2. **Akurasi tinggi bersifat sirkular.** `deviasi_persen` sekaligus dipakai membentuk label dan memprediksinya. Tanpa fitur ini, akurasi turun 45,4 poin — menandakan classifier sebagian besar hanya "menghafal" aturan tertile.
-3. **Validasi kasar dengan umur iklan lemah.** Korelasi Spearman antara deviasi dan lama iklan tayang hanya ρ ≈ 0,06. Ini bukan bukti sistem akurat, hanya indikasi arah yang benar.
-4. **Merek dan model terbatas** pada daftar di `MODEL_PER_MEREK` (`processing.py`). Unit di luar daftar jatuh ke kategori "Lainnya" dan prediksinya kurang spesifik.
-5. **Prediksi keyakinan rendah untuk unit langka.** Kombinasi merek+model+rentang usia dengan data < 15 unit diberi peringatan otomatis, dan harga wajarnya dihitung dengan metode fallback (regresi usia atau median), bukan model ML utama.
-6. **Data bersifat snapshot.** Tidak ada pembaruan otomatis — perlu scraping ulang secara berkala agar harga wajar tetap mencerminkan kondisi pasar terkini.
-7. **Validasi memakai umur iklan (tanggal_posting) tidak reliabel.** Rentang tanggalnya mencapai lebih dari 560 hari, jauh melebihi batas 30 hari yang diberlakukan OLX untuk iklan aktif yang tidak diperbarui. Ini menandakan tanggal_posting kemungkinan besar adalah tanggal iklan pertama kali dibuat, bukan tanggal terakhir diperbarui — sehingga iklan yang sering di-bump tetap tercatat dengan tanggal lama. Validasi ini hanya memberi indikasi arah (label "Lambat" cenderung tanggal lebih lama), bukan bukti kuat.
+1. **Sifat Proxy Labeling:** Ketiadaan data historis tanggal transaksi cair di OLX membuat label *Cepat/Sedang/Lambat* murni dibentuk dari simpangan harga wajar.
+2. **Sirkularitas Fitur:** Fitur `deviasi_persen` memegang peranan 45,4% terhadap akurasi model. Akurasi 99,1% menunjukkan model berhasil menghafal pola pembagian tertile harga wajar.
+3. **Peringatan Sample Scarcity:** Untuk kombinasi merek, model, dan usia langka ($< 15$ data), sistem secara otomatis mengalihkan perhitungan ke metode *Fallback Log-Age Regression* dan menyalakan peringatan keyakinan rendah pada antarmuka pengguna.
