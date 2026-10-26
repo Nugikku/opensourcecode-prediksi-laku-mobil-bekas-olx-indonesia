@@ -1,216 +1,290 @@
 """
-AutoLaku: Pelatihan & Evaluasi Model Klasifikasi Kecepatan Laku
-Output disesuaikan dengan standar Materi P12 (Model Evaluation) & P13 (Model Comparison & Selection).
+train_model_klasifikasi.py
+--------------------------------------------------------------------------------
+Tahap 4: Pelatihan & Evaluasi Model Klasifikasi Likuiditas Mobil Bekas OLX
+Standar Perkuliahan Sains Data / Data Mining (P6, P9, P12, P13)
+--------------------------------------------------------------------------------
+- Bebas Data Leakage (Split Train 80% & Test 20% Terisolasi)
+- 6 Algoritma (Logistic Regression, KNN, Naive Bayes, Decision Tree, Random Forest, Gradient Boosting)
+- Ablation Study (Skenario A: Tanpa Deviasi Harga vs Skenario B: Dengan Deviasi Harga)
+- Evaluasi 5-Fold Stratified Cross-Validation
+- Generasi 6 Grafik Visualisasi Akademis dalam Persentase (%)
 """
 
-import os, json, pickle, warnings
+import os
+import json
+import pickle
+import warnings
 from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 
-from sklearn.model_selection import train_test_split, KFold, StratifiedKFold, GridSearchCV, cross_val_predict, cross_val_score
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, label_binarize
-from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
+from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import (accuracy_score, f1_score, precision_score, recall_score,
-                             confusion_matrix, classification_report, mean_absolute_percentage_error,
-                             mean_squared_error, mean_absolute_error, root_mean_squared_error,
-                             roc_curve, auc)
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    confusion_matrix
+)
 
-from processing import AMBANG_KEYAKINAN_SAMPEL, hitung_harga_wajar_fallback, klip_deviasi, DEVIASI_MIN, DEVIASI_MAX
+# Import 6 Algoritma Perkuliahan (P6, P9, P12, P13)
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
 warnings.filterwarnings("ignore")
-OUTPUT_DIR = f"output_klasifikasi_{datetime.now().strftime('%d-%m-%Y')}"
+
+# Konfigurasi Direktori & Theme Plotting
+OUTPUT_DIR = "output_klasifikasi_terbaru"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 plt.style.use("seaborn-v0_8-whitegrid")
 
-file_dataset = "dataset_olx_bersih.csv"
-if not os.path.exists(file_dataset):
-    raise FileNotFoundError(f"File '{file_dataset}' tidak ditemukan. Jalankan processing.py terlebih dahulu.")
-df = pd.read_csv(file_dataset)
-
-categorical_cols = ['merek', 'model', 'transmisi', 'tipe_penjual', 'ada_garansi']
-numerical_cols = ['tahun', 'jarak_tempuh', 'usia_mobil', 'km_per_tahun']
-fitur_harga = categorical_cols + numerical_cols
-fitur_kls = fitur_harga + ['deviasi_persen']
+DATASET_FILE = "dataset_olx_berlabel.csv"
+META_SELECTION_FILE = "analisis_fitur_meta.json"
 LABEL_ORDER = ["Cepat", "Sedang", "Lambat"]
-RANK = {l: i for i, l in enumerate(LABEL_ORDER)}
 
-df_model = df.dropna(subset=fitur_harga + ['harga']).copy()
-print(f"Total sampel dataset: {len(df_model):,} baris")
 
-def buat_prep(num_cols):
-    return ColumnTransformer([('cat', OneHotEncoder(handle_unknown='ignore'), categorical_cols),
-                              ('num', StandardScaler(), num_cols)])
+def main():
+    print("=" * 85)
+    print("   TRAIN_MODEL_KLASIFIKASI.PY - PELATIHAN & EVALUASI 6 GRAFIK MATERI (P6-P13)   ")
+    print("=" * 85)
 
-def buat_regresor():
-    reg = TransformedTargetRegressor(
-        regressor=GradientBoostingRegressor(n_estimators=300, learning_rate=0.05, max_depth=4, random_state=42),
-        func=np.log1p, inverse_func=np.expm1)
-    return Pipeline([('prep', buat_prep(numerical_cols)), ('reg', reg)])
+    if not os.path.exists(DATASET_FILE):
+        raise FileNotFoundError(f"File dataset '{DATASET_FILE}' tidak ditemukan.")
 
-# ============================================================
-# TAHAP 1: PREDIKSI HARGA WAJAR (REGRESI)
-# ============================================================
-print("\n" + "=" * 75 + "\nTAHAP 1: PREDIKSI HARGA WAJAR (Out-of-Fold ML + Fallback Usia)\n" + "=" * 75)
-oof = cross_val_predict(buat_regresor(), df_model[fitur_harga], df_model['harga'],
-                        cv=KFold(5, shuffle=True, random_state=42), n_jobs=-1)
-df_model['harga_wajar_model'] = np.clip(oof, 1_000_000, None)
+    df = pd.read_csv(DATASET_FILE)
 
-sampel_lain = df_model['jumlah_sampel_kategori'] - 1
-final, sumber = [], []
-for idx, r in df_model.iterrows():
-    hw, sm = float(r['harga_wajar_model']), "model ML"
-    if sampel_lain[idx] < AMBANG_KEYAKINAN_SAMPEL:
-        hf, s = hitung_harga_wajar_fallback(df_model, r['merek'], r['model'], r['usia_mobil'], exclude_idx=idx)
-        if hf is not None:
-            hw, sm = hf, s
-    final.append(hw); sumber.append(sm)
-df_model['harga_wajar_final'] = final
-df_model['sumber_harga_wajar'] = sumber
+    # 1. Memuat Fitur Terpilih dari Metadata Step 3 (analisis_fitur.py)
+    if os.path.exists(META_SELECTION_FILE):
+        with open(META_SELECTION_FILE, "r") as f:
+            meta_sel = json.load(f)
+        num_cols = meta_sel["fitur_numerik_terpilih"]
+        cat_cols = meta_sel["fitur_kategorik_terpilih"]
+    else:
+        num_cols = ['usia_mobil', 'jarak_tempuh', 'km_per_tahun', 'indikasi_kredit_tdp']
+        cat_cols = ['merek', 'model', 'transmisi', 'tipe_penjual', 'ada_garansi']
 
-mape_final = mean_absolute_percentage_error(df_model['harga'], df_model['harga_wajar_final']) * 100
-mae_final = mean_absolute_error(df_model['harga'], df_model['harga_wajar_final'])
-rmse_final = root_mean_squared_error(df_model['harga'], df_model['harga_wajar_final'])
+    print(f"Fitur Numerik Terpilih   : {num_cols}")
+    print(f"Fitur Kategorik Terpilih : {cat_cols}")
 
-regresi_final = buat_regresor().fit(df_model[fitur_harga], df_model['harga'])
-with open("model_regresi_harga.pkl", "wb") as f:
-    pickle.dump(regresi_final, f)
+    # 2. Data Split Murni (Mencegah Data Leakage)
+    df_train = df[df['is_train'] == 1].copy()
+    df_test = df[df['is_train'] == 0].copy()
 
-# ============================================================
-# TAHAP 2: FORMULASI LABEL PROXY (TERTILE)
-# ============================================================
-print("\n" + "=" * 75 + "\nTAHAP 2: PEMBENTUKAN LABEL PROXY LIKUIDITAS\n" + "=" * 75)
-df_model['deviasi_persen'] = ((df_model['harga'] - df_model['harga_wajar_final'])
-                              / df_model['harga_wajar_final'] * 100).clip(DEVIASI_MIN, DEVIASI_MAX)
-q33, q67 = df_model['deviasi_persen'].quantile([0.33, 0.67])
+    print(f"\nJumlah Data Training : {len(df_train):,} baris")
+    print(f"Jumlah Data Testing  : {len(df_test):,} baris (Terisolasi)")
 
-df_model['status_likuiditas'] = np.where(df_model['deviasi_persen'] <= q33, "Cepat",
-                                np.where(df_model['deviasi_persen'] <= q67, "Sedang", "Lambat"))
-turun = ((df_model['status_likuiditas'] == "Cepat") & (df_model['km_per_tahun'] > 30000)
-         & (df_model['ada_garansi'] == 'Tidak'))
-df_model.loc[turun, 'status_likuiditas'] = "Sedang"
+    # Function Helper Preprocessor
+    def buat_prep(fitur_num, fitur_cat):
+        return ColumnTransformer([
+            ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), fitur_cat),
+            ('num', StandardScaler(), fitur_num)
+        ])
 
-# ============================================================
-# TAHAP 3: PERBANDINGAN MODEL & CROSS-VALIDATION (P12 & P13)
-# ============================================================
-print("\n" + "=" * 75 + "\nTAHAP 3: EVALUASI & KOMPARASI MODEL (P12 & P13 STANDARDS)\n" + "=" * 75)
-X, y = df_model[fitur_kls], df_model['status_likuiditas']
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    # 3. Definisi 6 Kandidat Algoritma
+    kandidat_model = {
+        "Logistic Regression": LogisticRegression(max_iter=2000, random_state=42),
+        "K-Nearest Neighbors (KNN)": KNeighborsClassifier(n_neighbors=5),
+        "Naive Bayes (Gaussian)": GaussianNB(),
+        "Decision Tree": DecisionTreeClassifier(max_depth=8, random_state=42),
+        "Random Forest": RandomForestClassifier(n_estimators=150, max_depth=12, random_state=42, n_jobs=-1),
+        "Gradient Boosting": GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_depth=4, random_state=42)
+    }
 
-kandidat_model = {
-    "Logistic Regression": LogisticRegression(max_iter=2000, random_state=42),
-    "Decision Tree": DecisionTreeClassifier(max_depth=10, random_state=42),
-    "Random Forest": RandomForestClassifier(n_estimators=200, max_depth=15, random_state=42, n_jobs=-1),
-    "Gradient Boosting": GradientBoostingClassifier(n_estimators=150, learning_rate=0.1, max_depth=4, random_state=42)
-}
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-hasil_komparasi = []
-pipes = {}
+    # ============================================================
+    # SKENARIO A: ABLATION STUDY (Spesifikasi Murni Tanpa Deviasi Harga)
+    # ============================================================
+    print("\n" + "-" * 85)
+    print("SKENARIO A: ABLATION STUDY (Evaluasi Murni Tanpa Fitur Deviasi Harga)")
+    print("-" * 85)
 
-for nama, clf in kandidat_model.items():
-    pipe = Pipeline([('prep', buat_prep(numerical_cols + ['deviasi_persen'])), ('clf', clf)])
-    pipe.fit(X_train, y_train)
-    pipes[nama] = pipe
-    
-    # Stratified 5-Fold Cross Validation (P12/P13)
-    cv_scores = cross_val_score(pipe, X_train, y_train, cv=skf, scoring='f1_macro')
-    
-    y_pred = pipe.predict(X_test)
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred, average='macro', zero_division=0)
-    rec = recall_score(y_test, y_pred, average='macro', zero_division=0)
-    f1 = f1_score(y_test, y_pred, average='macro', zero_division=0)
-    
-    hasil_komparasi.append({
-        "Model": nama,
-        "Accuracy": round(acc, 4),
-        "Precision_Macro": round(prec, 4),
-        "Recall_Macro": round(rec, 4),
-        "F1_Macro": round(f1, 4),
-        "CV_F1_Mean": round(cv_scores.mean(), 4),
-        "CV_F1_Std": round(cv_scores.std(), 4)
-    })
+    X_train_a = df_train[num_cols + cat_cols]
+    y_train_a = df_train['status_likuiditas']
+    X_test_a = df_test[num_cols + cat_cols]
+    y_test_a = df_test['status_likuiditas']
 
-df_komparasi = pd.DataFrame(hasil_komparasi)
-print(df_komparasi.to_string(index=False))
+    res_skenario_a = []
+    for nama, clf in kandidat_model.items():
+        pipe = Pipeline([('prep', buat_prep(num_cols, cat_cols)), ('clf', clf)])
+        cv_res = cross_validate(pipe, X_train_a, y_train_a, cv=skf, scoring='f1_macro', return_train_score=True)
+        pipe.fit(X_train_a, y_train_a)
+        y_pred_test = pipe.predict(X_test_a)
+        res_skenario_a.append({
+            "Model": nama,
+            "CV Val F1 (%)": round(cv_res['test_score'].mean() * 100, 2),
+            "Test F1 (%)": round(f1_score(y_test_a, y_pred_test, average='macro') * 100, 2)
+        })
+    df_res_a = pd.DataFrame(res_skenario_a)
+    print(df_res_a.to_string(index=False))
 
-# Pilih Model Terbaik Berdasarkan CV F1-Mean
-best_model_name = df_komparasi.sort_values("CV_F1_Mean", ascending=False).iloc[0]["Model"]
-best_pipe = pipes[best_model_name]
-print(f"\nModel Terbaik Pilihan: {best_model_name}")
+    # ============================================================
+    # SKENARIO B: MODEL UTAMA APLIKASI (Dengan Fitur Deviasi Harga)
+    # ============================================================
+    print("\n" + "-" * 85)
+    print("SKENARIO B: MODEL UTAMA APLIKASI (Dengan Fitur Deviasi Harga)")
+    print("-" * 85)
 
-# Simpan Model Terbaik
-with open("model_klasifikasi_likuiditas.pkl", "wb") as f:
-    pickle.dump(best_pipe, f)
+    num_cols_b = num_cols + ['deviasi_persen']
+    X_train_b = df_train[num_cols_b + cat_cols]
+    y_train_b = df_train['status_likuiditas']
+    X_test_b = df_test[num_cols_b + cat_cols]
+    y_test_b = df_test['status_likuiditas']
 
-# ============================================================
-# TAHAP 4: GENERASI GRAFIK OUTPUT (STANDAR P12 & P13)
-# ============================================================
-print("\n" + "=" * 75 + "\nTAHAP 4: GENERASI GRAFIK STANDAR P12 & P13\n" + "=" * 75)
+    res_skenario_b = []
+    pipes_b = {}
 
-# 1. Grafik Komparasi Metrik (P13 Slide 11-15)
-fig, ax = plt.subplots(figsize=(10, 5))
-x = np.arange(len(df_komparasi))
-width = 0.2
-ax.bar(x - width*1.5, df_komparasi["Accuracy"], width, label="Accuracy", color="#2563EB")
-ax.bar(x - width*0.5, df_komparasi["Precision_Macro"], width, label="Precision", color="#D97706")
-ax.bar(x + width*0.5, df_komparasi["Recall_Macro"], width, label="Recall", color="#DC2626")
-ax.bar(x + width*1.5, df_komparasi["F1_Macro"], width, label="F1-Score", color="#059669")
-ax.set_xticks(x); ax.set_xticklabels(df_komparasi["Model"], rotation=10)
-ax.set_ylim(0, 1.1); ax.set_title("Perbandingan Metrik Evaluasi Model (P13)", fontsize=12, pad=10)
-ax.legend(loc="lower right"); plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, "1_komparasi_metrik_klasifikasi.png"), dpi=300); plt.close()
+    for nama, clf in kandidat_model.items():
+        pipe = Pipeline([('prep', buat_prep(num_cols_b, cat_cols)), ('clf', clf)])
+        cv_res = cross_validate(pipe, X_train_b, y_train_b, cv=skf, 
+                                scoring=['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'], 
+                                return_train_score=True)
+        pipe.fit(X_train_b, y_train_b)
+        pipes_b[nama] = pipe
 
-# 2. Confusion Matrix Model Terbaik (P12 Slide 9-10)
-y_pred_best = best_pipe.predict(X_test)
-cm = confusion_matrix(y_test, y_pred_best, labels=LABEL_ORDER)
-fig, ax = plt.subplots(figsize=(6, 5))
-im = ax.imshow(cm, cmap="Blues")
-ax.set_xticks(range(3)); ax.set_yticks(range(3))
-ax.set_xticklabels(LABEL_ORDER); ax.set_yticklabels(LABEL_ORDER)
-ax.set_xlabel("Prediksi Model"); ax.set_ylabel("Kelas Aktual")
-ax.set_title(f"Confusion Matrix - {best_model_name} (P12)", fontsize=12, pad=10)
-for i in range(3):
-    for j in range(3):
-        ax.text(j, i, cm[i, j], ha="center", va="center", color="white" if cm[i, j] > cm.max()/2 else "black")
-plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "2_confusion_matrix.png"), dpi=300); plt.close()
+        y_pred_test = pipe.predict(X_test_b)
 
-# 3. Grafik Stabilitas Cross-Validation Score (P13 Slide 25-26)
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.errorbar(df_komparasi["Model"], df_komparasi["CV_F1_Mean"], yerr=df_komparasi["CV_F1_Std"], 
-            fmt='o', color='#0284C7', ecolor='#EF4444', elinewidth=2, capsize=5)
-ax.set_ylabel("Mean F1-Score"); ax.set_title("Stabilitas Model via 5-Fold Cross-Validation (P13)", fontsize=12, pad=10)
-plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "3_stabilitas_cross_validation.png"), dpi=300); plt.close()
+        res_skenario_b.append({
+            "Model": nama,
+            "CV Train F1 (%)": round(cv_res['train_f1_macro'].mean() * 100, 2),
+            "CV Val F1 (%)": round(cv_res['test_f1_macro'].mean() * 100, 2),
+            "CV Std (%)": round(cv_res['test_f1_macro'].std() * 100, 2),
+            "Test Acc (%)": round(accuracy_score(y_test_b, y_pred_test) * 100, 2),
+            "Test Prec (%)": round(precision_score(y_test_b, y_pred_test, average='macro', zero_division=0) * 100, 2),
+            "Test Rec (%)": round(recall_score(y_test_b, y_pred_test, average='macro', zero_division=0) * 100, 2),
+            "Test F1 (%)": round(f1_score(y_test_b, y_pred_test, average='macro', zero_division=0) * 100, 2)
+        })
 
-# 4. Feature Importance (P13 Slide 39)
-clf_final = best_pipe.named_steps['clf']
-if hasattr(clf_final, "feature_importances_"):
-    imp = pd.DataFrame({"Fitur": best_pipe.named_steps['prep'].get_feature_names_out(),
-                        "Importance": clf_final.feature_importances_}).sort_values("Importance", ascending=False).head(12)
-    fig, ax = plt.subplots(figsize=(9, 5))
-    ax.barh(imp["Fitur"][::-1], imp["Importance"][::-1], color="#0D9488")
-    ax.set_title(f"Feature Importance (Explainability) - {best_model_name} (P13)", fontsize=12, pad=10)
-    plt.tight_layout(); plt.savefig(os.path.join(OUTPUT_DIR, "4_feature_importance.png"), dpi=300); plt.close()
+    df_res_b = pd.DataFrame(res_skenario_b)
+    print(df_res_b.to_string(index=False))
 
-# Simpan Ringkasan CSV
-df_komparasi.to_csv(os.path.join(OUTPUT_DIR, "ringkasan_metrik_klasifikasi.csv"), index=False)
+    # Pemilihan Model Terbaik
+    best_model_name = df_res_b.sort_values("CV Val F1 (%)", ascending=False).iloc[0]["Model"]
+    best_pipe = pipes_b[best_model_name]
+    print(f"\nModel Terbaik Berdasarkan 5-Fold Stratified CV: {best_model_name}")
 
-meta = {
-    "q33": float(q33), "q67": float(q67), "label_order": LABEL_ORDER,
-    "model_klasifikasi": best_model_name,
-    "mape_harga_wajar_pct": round(mape_final, 2),
-    "mae_harga_wajar_rupiah": round(mae_final, 0),
-    "rmse_harga_wajar_rupiah": round(rmse_final, 0),
-    "tanggal_latih": datetime.now().strftime("%Y-%m-%d")
-}
-json.dump(meta, open("autolaku_meta.json", "w"), indent=2)
+    # Simpan Model Terpilih ke File Pickle (.pkl)
+    with open("model_klasifikasi_likuiditas.pkl", "wb") as f:
+        pickle.dump(best_pipe, f)
 
-print(f"[SUKSES] Seluruh grafik dan ringkasan metrik sesuai standar P12 & P13 disimpan di folder '{OUTPUT_DIR}/'.")
+    # ============================================================
+    # GENERASI 6 GRAFIK UTAMA EVALUASI MATERI (%)
+    # ============================================================
+    print("\n--- Membuat & Menyimpan 6 Grafik Visualisasi Evaluasi Akademis (%) ---")
+    x = np.arange(len(df_res_b))
+
+    # Grafik 1: Perbandingan Metrik Evaluasi Model (P13 Slide 12-15)
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    w = 0.18
+    ax.bar(x - w*1.5, df_res_b["Test Acc (%)"], w, label="Accuracy", color="#2563EB")
+    ax.bar(x - w*0.5, df_res_b["Test Prec (%)"], w, label="Precision", color="#D97706")
+    ax.bar(x + w*0.5, df_res_b["Test Rec (%)"], w, label="Recall", color="#DC2626")
+    ax.bar(x + w*1.5, df_res_b["Test F1 (%)"], w, label="F1-Score", color="#059669")
+    ax.set_xticks(x)
+    ax.set_xticklabels(df_res_b["Model"], rotation=15, ha='right')
+    ax.set_ylim(60, 105)
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+    ax.set_title("1. Perbandingan Metrik Evaluasi Model Klasifikasi (%)", fontsize=11, pad=10)
+    ax.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, "1_komparasi_metrik_klasifikasi.png"), dpi=300)
+    plt.close()
+
+    # Grafik 2: Confusion Matrix Model Terpilih (P12 Slide 18-21)
+    y_pred_best = best_pipe.predict(X_test_b)
+    cm = confusion_matrix(y_test_b, y_pred_best, labels=LABEL_ORDER)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    im = ax.imshow(cm, cmap="Blues")
+    ax.set_xticks(range(3)); ax.set_yticks(range(3))
+    ax.set_xticklabels(LABEL_ORDER); ax.set_yticklabels(LABEL_ORDER)
+    ax.set_xlabel("Prediksi Model"); ax.set_ylabel("Kelas Aktual")
+    ax.set_title(f"2. Confusion Matrix - {best_model_name} (Data Test Murni)", fontsize=11, pad=10)
+    for i in range(3):
+        for j in range(3):
+            ax.text(j, i, f"{cm[i, j]}", ha="center", va="center", color="white" if cm[i, j] > cm.max()/2 else "black")
+    plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, "2_confusion_matrix.png"), dpi=300)
+    plt.close()
+
+    # Grafik 3: Stabilitas 5-Fold Cross Validation (P13 Slide 23-26)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.errorbar(df_res_b["Model"], df_res_b["CV Val F1 (%)"], yerr=df_res_b["CV Std (%)"], 
+                fmt='o', color='#0284C7', ecolor='#EF4444', elinewidth=2, capsize=5)
+    ax.set_ylim(60, 105)
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+    ax.set_ylabel("Mean CV F1-Score (%)")
+    ax.set_title("3. Stabilitas Model via 5-Fold Stratified Cross-Validation (%)", fontsize=11, pad=10)
+    plt.xticks(rotation=15, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, "3_stabilitas_cross_validation.png"), dpi=300)
+    plt.close()
+
+    # Grafik 4: Feature Importance / Explainability (P13 Slide 31-34)
+    clf_final = best_pipe.named_steps['clf']
+    if hasattr(clf_final, "feature_importances_"):
+        imp = pd.DataFrame({
+            "Fitur": best_pipe.named_steps['prep'].get_feature_names_out(),
+            "Importance (%)": clf_final.feature_importances_ * 100
+        }).sort_values("Importance (%)", ascending=False).head(8)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.barh(imp["Fitur"][::-1], imp["Importance (%)"][::-1], color="#0D9488")
+        ax.xaxis.set_major_formatter(mtick.PercentFormatter())
+        ax.set_title("4. Feature Importance (Kontribusi Fitur dalam %)", fontsize=11, pad=10)
+        plt.tight_layout()
+        plt.savefig(os.path.join(OUTPUT_DIR, "4_feature_importance.png"), dpi=300)
+        plt.close()
+
+    # Grafik 5: Ablation Study - Skenario A vs B (P13 Slide 38-40)
+    fig, ax = plt.subplots(figsize=(9, 4))
+    w = 0.35
+    ax.bar(x - w/2, df_res_a["CV Val F1 (%)"], w, label="Skenario A (Tanpa Deviasi Harga)", color="#94A3B8")
+    ax.bar(x + w/2, df_res_b["CV Val F1 (%)"], w, label="Skenario B (Dengan Deviasi Harga)", color="#059669")
+    ax.set_xticks(x)
+    ax.set_xticklabels(df_res_b["Model"], rotation=15, ha='right')
+    ax.set_ylim(0, 110)
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+    ax.set_title("5. Ablation Study: Dampak Fitur Deviasi Harga terhadap CV F1-Score (%)", fontsize=11, pad=10)
+    ax.legend(loc="upper left")
+    plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, "5_ablation_study_comparison.png"), dpi=300)
+    plt.close()
+
+    # Grafik 6: Check Overfitting - Train F1 vs Validation F1 (P12 Slide 28-30)
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.plot(df_res_b["Model"], df_res_b["CV Train F1 (%)"], marker='o', label="Train F1 (%)", color="#2563EB", linewidth=2)
+    ax.plot(df_res_b["Model"], df_res_b["CV Val F1 (%)"], marker='s', label="Validation F1 (%)", color="#DC2626", linewidth=2, linestyle='--')
+    ax.set_ylim(60, 105)
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+    ax.set_title("6. Evaluasi Overfitting: Train vs Validation F1-Score (%)", fontsize=11, pad=10)
+    plt.xticks(rotation=15, ha='right')
+    ax.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, "6_overfitting_check.png"), dpi=300)
+    plt.close()
+
+    # 4. Menyimpan Ringkasan Metadata Evaluasi JSON
+    meta_eval = {
+        "skenario_a_ablation_study": df_res_a.to_dict(orient="records"),
+        "skenario_b_model_utama": df_res_b.to_dict(orient="records"),
+        "model_terpilih": best_model_name,
+        "tanggal_latih": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    with open("ringkasan_evaluasi_klasifikasi.json", "w") as f:
+        json.dump(meta_eval, f, indent=2)
+
+    print(f"\n[SUKSES] Step 4 Selesai! Model & 6 Gambar Grafik Evaluasi diselaraskan di '{OUTPUT_DIR}/'.")
+    print("=" * 85)
+
+
+if __name__ == "__main__":
+    main()
