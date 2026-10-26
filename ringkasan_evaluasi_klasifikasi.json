@@ -1,0 +1,98 @@
+{
+  "skenario_a_ablation_study": [
+    {
+      "Model": "Logistic Regression",
+      "CV Val F1 (%)": 53.03,
+      "Test F1 (%)": 53.56
+    },
+    {
+      "Model": "K-Nearest Neighbors (KNN)",
+      "CV Val F1 (%)": 46.19,
+      "Test F1 (%)": 48.77
+    },
+    {
+      "Model": "Naive Bayes (Gaussian)",
+      "CV Val F1 (%)": 44.53,
+      "Test F1 (%)": 51.88
+    },
+    {
+      "Model": "Decision Tree",
+      "CV Val F1 (%)": 41.87,
+      "Test F1 (%)": 40.12
+    },
+    {
+      "Model": "Random Forest",
+      "CV Val F1 (%)": 48.83,
+      "Test F1 (%)": 51.45
+    },
+    {
+      "Model": "Gradient Boosting",
+      "CV Val F1 (%)": 49.41,
+      "Test F1 (%)": 52.65
+    }
+  ],
+  "skenario_b_model_utama": [
+    {
+      "Model": "Logistic Regression",
+      "CV Train F1 (%)": 98.14,
+      "CV Val F1 (%)": 95.15,
+      "CV Std (%)": 1.98,
+      "Test Acc (%)": 96.15,
+      "Test Prec (%)": 96.25,
+      "Test Rec (%)": 96.24,
+      "Test F1 (%)": 96.21
+    },
+    {
+      "Model": "K-Nearest Neighbors (KNN)",
+      "CV Train F1 (%)": 81.98,
+      "CV Val F1 (%)": 71.5,
+      "CV Std (%)": 1.63,
+      "Test Acc (%)": 71.73,
+      "Test Prec (%)": 72.24,
+      "Test Rec (%)": 72.27,
+      "Test F1 (%)": 72.11
+    },
+    {
+      "Model": "Naive Bayes (Gaussian)",
+      "CV Train F1 (%)": 56.35,
+      "CV Val F1 (%)": 50.45,
+      "CV Std (%)": 2.95,
+      "Test Acc (%)": 56.96,
+      "Test Prec (%)": 60.84,
+      "Test Rec (%)": 56.03,
+      "Test F1 (%)": 55.86
+    },
+    {
+      "Model": "Decision Tree",
+      "CV Train F1 (%)": 100.0,
+      "CV Val F1 (%)": 99.79,
+      "CV Std (%)": 0.2,
+      "Test Acc (%)": 99.57,
+      "Test Prec (%)": 99.57,
+      "Test Rec (%)": 99.57,
+      "Test F1 (%)": 99.57
+    },
+    {
+      "Model": "Random Forest",
+      "CV Train F1 (%)": 100.0,
+      "CV Val F1 (%)": 98.93,
+      "CV Std (%)": 0.72,
+      "Test Acc (%)": 99.57,
+      "Test Prec (%)": 99.55,
+      "Test Rec (%)": 99.61,
+      "Test F1 (%)": 99.57
+    },
+    {
+      "Model": "Gradient Boosting",
+      "CV Train F1 (%)": 100.0,
+      "CV Val F1 (%)": 99.84,
+      "CV Std (%)": 0.13,
+      "Test Acc (%)": 99.79,
+      "Test Prec (%)": 99.77,
+      "Test Rec (%)": 99.8,
+      "Test F1 (%)": 99.79
+    }
+  ],
+  "model_terpilih": "Gradient Boosting",
+  "tanggal_latih": "2026-10-26 18:58:23"
+}

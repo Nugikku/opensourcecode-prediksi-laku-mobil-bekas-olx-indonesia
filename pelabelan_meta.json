@@ -1,0 +1,17 @@
+{
+  "q33_tertile": -10.4811,
+  "q67_tertile": 9.6113,
+  "regresi_eval": {
+    "mae_cv": 91749358.23,
+    "rmse_cv": 212515666.63,
+    "mape_cv": 23.11,
+    "r2_cv": 0.7013
+  },
+  "distribusi_label": {
+    "Sedang": 794,
+    "Lambat": 775,
+    "Cepat": 764
+  },
+  "total_train": 1866,
+  "total_test": 467
+}

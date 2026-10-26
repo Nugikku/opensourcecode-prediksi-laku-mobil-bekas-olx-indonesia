@@ -1,5 +1,0 @@
-Model,Accuracy (%),Precision (%),Recall (%),F1_Macro (%),CV_F1_Mean (%),CV_F1_Std (%)
-Logistic Regression,94.43,94.81,94.41,94.52,94.71,0.69
-Decision Tree,99.79,99.78,99.79,99.79,99.57,0.21
-Random Forest,99.14,99.15,99.17,99.15,99.47,0.48
-Gradient Boosting,99.79,99.78,99.79,99.79,99.52,0.26

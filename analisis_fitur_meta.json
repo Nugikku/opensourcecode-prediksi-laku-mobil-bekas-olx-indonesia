@@ -1,0 +1,62 @@
+{
+  "fitur_numerik_terpilih": [
+    "usia_mobil",
+    "jarak_tempuh",
+    "km_per_tahun",
+    "indikasi_kredit_tdp"
+  ],
+  "fitur_kategorik_terpilih": [
+    "merek",
+    "model",
+    "transmisi",
+    "tipe_penjual",
+    "ada_garansi"
+  ],
+  "fitur_dibuang": [
+    "tahun"
+  ],
+  "top_5_mi_encoded": [
+    {
+      "Fitur_Encoded": "cat__model_Jazz",
+      "MI_Score": 0.05796198604274605
+    },
+    {
+      "Fitur_Encoded": "cat__merek_Fiat",
+      "MI_Score": 0.035376104289916555
+    },
+    {
+      "Fitur_Encoded": "cat__model_Alvez",
+      "MI_Score": 0.034487366283105336
+    },
+    {
+      "Fitur_Encoded": "cat__merek_Denza",
+      "MI_Score": 0.03390260336217077
+    },
+    {
+      "Fitur_Encoded": "cat__model_Confero",
+      "MI_Score": 0.031849984163317746
+    }
+  ],
+  "top_5_rf_importance": [
+    {
+      "Fitur_Encoded": "num__km_per_tahun",
+      "Importance": 0.15432256555164497
+    },
+    {
+      "Fitur_Encoded": "num__jarak_tempuh",
+      "Importance": 0.13728916810335173
+    },
+    {
+      "Fitur_Encoded": "num__tahun",
+      "Importance": 0.09782676141964107
+    },
+    {
+      "Fitur_Encoded": "num__usia_mobil",
+      "Importance": 0.09039414284107922
+    },
+    {
+      "Fitur_Encoded": "num__indikasi_kredit_tdp",
+      "Importance": 0.033380824552811064
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "jejak_data_baris": {
+    "mentah_awal": 3000,
+    "setelah_filter_null": 2679,
+    "setelah_filter_domain_harga_tahun": 2638,
+    "bersih_akhir": 2333
+  },
+  "missing_value_audit_awal": {
+    "id_iklan": 0,
+    "tanggal_posting": 0,
+    "status_iklan_terjual": 0,
+    "judul": 0,
+    "deskripsi": 1,
+    "merek": 0,
+    "model": 0,
+    "tahun": 3000,
+    "transmisi": 0,
+    "jarak_tempuh": 0,
+    "harga": 0,
+    "tipe_penjual_badge": 0,
+    "lokasi": 0
+  },
+  "imputasi_summary": {
+    "jarak_tempuh_diimputasi": 0,
+    "persentase_imputasi_km": 0.0
+  },
+  "outlier_dan_noise_summary": {
+    "jumlah_outlier_harga_iqr": 62,
+    "jumlah_noise_km_ekstrem": 12
+  },
+  "catatan_metodologi_p3_4": {
+    "smoothing": "Tidak diterapkan karena data bersifat tabular cross-sectional, bukan time-series bertautan.",
+    "data_integration": "Tidak dilakukan karena data bersumber tunggal dari OLX Indonesia.",
+    "outlier_handling": "Outlier ditandai (is_outlier_harga) dengan IQR pada log(harga) per merek, bukan dihapus, untuk mempertahankan kendaraan mewah/unik yang valid."
+  }
+}
