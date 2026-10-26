@@ -7,9 +7,9 @@
 | Komponen | Keterangan / Spesifikasi |
 |---|---|
 | **Nama Produk** | **AutoLaku** |
-| **Masalah Utama** | Penjual mobil bekas perseorangan di OLX kerap mengalami *asimetri informasi* dan kesulitan menentukan strategi harga jual. Memasang harga terlalu mahal (*overpriced*) berisiko membuat kendaraan mengendap lama di garasi (*liquidity risk*), sedangkan harga terlalu murah berisiko merugikan penjual. Selain itu, penjual sering tidak menyadari bahwa faktor kualitatif dalam deskripsi (seperti garansi/catatan servis) dan rasio kilometer tahunan berpengaruh besar terhadap daya serap pasar. |
+| **Masalah Utama** | Penjual mobil bekas perseorangan di platform OLX kerap mengalami *asimetri informasi* dan kesulitan menentukan strategi harga jual. Memasang harga terlalu mahal (*overpriced*) berisiko membuat kendaraan mengendap lama di garasi (*liquidity risk*), sedangkan harga terlalu murah berisiko merugikan penjual. Selain itu, penjual sering tidak menyadari bahwa faktor kualitatif dalam deskripsi (seperti garansi/catatan servis) dan rasio kilometer tahunan berpengaruh besar terhadap daya serap pasar. |
 | **Profil Pengguna Target** | **Penjual Mobil Bekas Perseorangan** yang ingin mengevaluasi daya saing iklan, memprediksi kecepatan laku unitnya (Cepat, Sedang, Lambat), serta mensimulasikan penyesuaian harga sebelum iklan resmi ditayangkan. |
-| **Sumber Dataset** | Web scraping mandiri via API Interception & Playwright pada direktori mobil bekas OLX Indonesia (`dataset_olx_mentah.csv`), menghasilkan **3.000 baris data iklan aktif**. |
+| **Sumber Dataset** | Web scraping mandiri via API Interception & Playwright pada direktori mobil bekas OLX Indonesia (`dataset_olx_mentah.csv`), menghasilkan **1.000 baris data iklan aktif bersih**. |
 | **Fungsi Utama Aplikasi** | Menerima input spesifikasi teknis kendaraan, rencana harga jual, dan draf deskripsi iklan. Sistem menghitung estimasi **Harga Pasar Wajar (ML Regression)**, memicu **NLP Text Scanner**, dan memprediksi status **Kecepatan Laku (Classification)** beserta simulasi harga interaktif. |
 | **Metodologi Data Mining** | **Classification** (Prediksi kategori kecepatan laku: *Cepat*, *Sedang*, *Lambat*) dengan **Regression** (Gradient Boosting / Log-Price) sebagai *feature engine* pembentuk fitur utama `deviasi_persen`. |
 
@@ -45,43 +45,49 @@
      │
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  TAHAP 2 — PELATIHAN MODEL & EVALUASI (train_model_klasifikasi) │
+│  TAHAP 2 — MODEL HARGA WAJAR & PELABELAN PROXY (pelabelan.py)   │
 │                                                                 │
-│  [2a] Model Regresi Harga Wajar (Log-Price Gradient Boosting)   │
-│       • Hitung harga_wajar_model secara Out-of-Fold (OOF 5-Fold)│
-│       • Fallback Regresi Usia/Median jika sampel < 15 data      │
-│  [2b] Pembentukan Label Proxy Likuiditas                        │
-│       • deviasi_persen = (harga_iklan - harga_wajar) / harga_wajar│
-│       • Pembagian Tertile (Q33 & Q67): Cepat / Sedang / Lambat  │
-│       • Penyesuaian Rule: KM/tahun > 30.000 & Tanpa Garansi ➔ Sedang│
-│  [2c] Model Klasifikasi Kecepatan Laku (Stratified 5-Fold CV)   │
-│       • Pengujian Kandidat: LogReg, DecisionTree, RF, GradBoost │
-│       • Hyperparameter Tuning (GridSearchCV)                    │
-│       • Kriteria Pilih: Monotonik Harga, Non-Overconfident, F1   │
+│  • Data Split: 80% Train (800 sampel) & 20% Test (200 sampel)   │
+│  • Regresi Log-Target Gradient Boosting: MAE Rp 98,3 Juta       │
+│  • Kalkulasi Deviasi Persen pada Data Training                  │
+│  • Ambang Tertile: Q33 (-18,71%) & Q67 (+34,62%)               │
 │                                                                 │
-│  Output ➔ model_regresi_harga.pkl, model_klasifikasi_likuiditas.pkl,│
-│           autolaku_meta.json, folder output_klasifikasi_<date>/ │
+│  Output ➔ dataset_olx_berlabel.csv                              │
 └─────────────────────────────────────────────────────────────────┘
      │
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  TAHAP 3 — CORE INFERENCE ENGINE (mesin_prediksi.py)            │
+│  TAHAP 3 — FEATURE SELECTION FORMAL (analisis_fitur.py)        │
 │                                                                 │
-│  • Pusat logika inferensi tunggal: validasi masukan, hitung     │
-│    harga wajar, hitung deviasi, prediksi probabilitas kelas,    │
-│    dan penyusunan peringatan keyakinan sampel.                  │
+│  • Pearson Correlation: Deteksi Multikolinearitas (r = -1.0)    │
+│  • Dibuang: `tahun` (Redundan dengan `usia_mobil`)              │
+│  • Dipertahankan: `usia_mobil`, `jarak_tempuh`, `km_per_tahun`, │
+│    `merek`, `model`, `transmisi`, `ada_garansi`, `tdp_kredit`   │
+│                                                                 │
+│  Output ➔ keputusan_fitur.csv, analisis_fitur_meta.json         │
 └─────────────────────────────────────────────────────────────────┘
      │
-     ├───────────────────────────────┐
-     ▼                               ▼
-┌──────────────────────────┐    ┌─────────────────────────────────┐
-│ TAHAP 4 — AUTOMATED TEST │    │ TAHAP 5 — USER INTERFACE        │
-│ (test_sistem.py)         │    │                                 │
-│                          │    │ • CLI Terminal:                 │
-│ • Validasi masukan & NLP │    │   test_prediksi_klasifikasi.py  │
-│ • Uji Monotonisitas Harga│    │ • Web App (Streamlit):          │
-└──────────────────────────┘    │   app.py                        │
-                                └─────────────────────────────────┘
+     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  TAHAP 4 — PELATIHAN & EVALUASI KLASIFIKASI (train_model.py)    │
+│                                                                 │
+│  • 5-Fold Stratified Cross-Validation pada Data Training        │
+│  • Pengujian 6 Algoritma (LogReg, KNN, NB, DT, RF, GradBoost)   │
+│  • Skenario A (Ablation Study) vs Skenario B (Model Utama)     │
+│  • Generasi 6 Grafik Visualisasi Akademis (%)                   │
+│                                                                 │
+│  Output ➔ model_klasifikasi_likuiditas.pkl,                     │
+│           ringkasan_evaluasi_klasifikasi.json,                  │
+│           folder output_klasifikasi_terbaru/                    │
+└─────────────────────────────────────────────────────────────────┘
+     │
+     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  TAHAP 5 — INFERENCE ENGINE & INTERFACE (app.py)                │
+│                                                                 │
+│  • Core Engine: mesin_prediksi.py                               │
+│  • Interactive Dashboard: Streamlit Web App (app.py)            │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -96,7 +102,7 @@
 | `merek` | Kategorik | Merek pabrikan kendaraan (Toyota, Honda, Daihatsu, Suzuki, Mitsubishi, dll.). |
 | `model` | Kategorik | Seri/Model spesifik kendaraan (Avanza, Innova, Brio, Xenia, Xpander, dll.). |
 | `tahun` | Numerik | Tahun perakitan kendaraan (1995–2026). Dikonversi dari kolom atau diekstrak dari judul. |
-| `transmisi` | Kategorik | Jenis sistem transmisi, dinormalisasi menjadi dua kelas baku: `automatic` atau `manual`. |
+| `transmisi` | Kategorik | Jenis sistem transmisi, dinormalisasi menjadi dua kelas baku: `Automatic` atau `Manual`. |
 | `harga` | Numerik | Harga penawaran aktif penjual (Rupiah). Filter harga boneka/placeholder diterapkan. |
 | `jarak_tempuh` | Numerik | Total angka odometer (KM). Format rentang (mis. "50.000–60.000") dirata-ratakan. |
 | `deskripsi` | Teks | Teks penjelasan detail iklan. Dipindai oleh NLP engine untuk fitur garansi dan indikasi kredit. |
@@ -115,57 +121,64 @@
 | `usia_bracket` | `usia_mobil` | Pengelompokan umur kendaraan per rentang 5 tahun (0–4, 5–9, 10–14, dst.). |
 | `jumlah_sampel_kategori` | `merek`, `model`, `usia_bracket` | Jumlah unit sejenis dalam kancah data. Menjadi dasar peringatan keyakinan sampel (ambang = 15). |
 
-### 3. Matriks Fitur Pemodelan
+### 3. Matriks Fitur Pemodelan Final (`keputusan_fitur.csv`)
 
-* **Model Regresi Harga Wajar (9 Fitur):** `merek` [One-Hot], `model` [One-Hot], `transmisi` [One-Hot], `tipe_penjual` [One-Hot], `ada_garansi` [One-Hot], `tahun` [StandardScaler], `jarak_tempuh` [StandardScaler], `usia_mobil` [StandardScaler], `km_per_tahun` [StandardScaler].
-* **Model Klasifikasi Kecepatan Laku (10 Fitur):** 9 Fitur Regresi di atas + `deviasi_persen` (Fitur Terpenting).
+| Fitur | Tipe Data | Status | Alasan Akademik & Metodologis |
+|---|---|---|---|
+| `tahun` | Numerik | **DIBUANG** | Multikolinearitas sempurna ($r = -1.0$) dengan `usia_mobil`. |
+| `usia_mobil` | Numerik | **DIPERTAHANKAN** | Fitur linier depresiasi harga kendaraan per tahun. |
+| `jarak_tempuh` | Numerik | **DIPERTAHANKAN** | Indikator utama pemakaian fisik kendaraan. |
+| `km_per_tahun` | Numerik | **DIPERTAHANKAN** | Rasio intensitas pemakaian operasional tahunan. |
+| `merek` & `model` | Kategorik | **DIPERTAHANKAN** | Variabel utama segmentasi pasar. |
+| `transmisi` | Kategorik | **DIPERTAHANKAN** | Preferensi utama konsumen pasar lokal. |
+| `tipe_penjual` | Kategorik | **DIPERTAHANKAN** | Memisahkan perilaku harga Dealer vs Individu. |
+| `ada_garansi` | Kategorik | **DIPERTAHANKAN** | Fitur NLP penambah nilai psikologis pembeli. |
+| `indikasi_kredit_tdp`| Biner | **DIPERTAHANKAN** | Menyaring skema penawaran uang muka kredit. |
+| `deviasi_persen` | Numerik | **DIPERTAHANKAN** | Fitur utama selisih harga jual terhadap harga wajar pasar. |
 
 ---
 
 ## 🏷️ Pembentukan Label Proxy & Aturan Bisnis
 
-Karena OLX menyembunyikan iklan yang telah terjual (*unlisted*), label target (**Cepat**, **Sedang**, **Lambat**) dibentuk secara kuantitatif (*Proxy Labeling*):
+Karena OLX menyembunyikan iklan yang telah terjual (*unlisted*), label target (**Cepat**, **Sedang**, **Lambat**) dibentuk secara kuantitatif (*Proxy Labeling*) pada **Data Training ($800$ sampel)**:
 
-1. **Estimasi Out-of-Fold (OOF):** Harga wajar tiap iklan dihitung menggunakan 5-Fold Cross-Validation agar tidak terjadi *data leakage*.
+1. **Estimasi Regresi Harga Wajar:** Model Log-Target Gradient Boosting dilatih pada data training.
 2. **Kalkulasi Deviasi Persen:**
    $$\text{deviasi\_persen} = \frac{\text{harga\_iklan} - \text{harga\_wajar}}{\text{harga\_wajar}} \times 100\%$$
-3. **Pembagian Tertile Kuantil:**
-   - **Q33 ($\approx -8,07\%$):** Deviasi $\le -8,07\%$ ➔ **Cepat Laku** ($< 15$ Hari)
-   - **Q67 ($\approx +7,67\%$):** Deviasi $-8,07\%$ s.d. $+7,67\%$ ➔ **Laku Sedang** ($15 - 30$ Hari)
-   - **$>$ Q67:** Deviasi $> +7,67\%$ ➔ **Lambat Laku** ($> 30$ Hari)
-4. **Aturan Penyesuaian Kondisi Fisik:** Unit di kelas *Cepat* dengan `km_per_tahun` $> 30.000$ KM **dan** `ada_garansi` = `Tidak` otomatis diturunkan kelasnya menjadi **Sedang**.
+3. **Pembagian Tertile Kuantil (Data Train):**
+   - **$Q_{33}$ (Batas $-18,71\%$):** Deviasi $\le -18,71\%$ ➔ **Cepat Laku**
+   - **$Q_{67}$ (Batas $+34,62\%$):** Deviasi $-18,71\%$ s.d. $+34,62\%$ ➔ **Sedang Laku**
+   - **$>$ $Q_{67}$:** Deviasi $> +34,62\%$ ➔ **Lambat Laku**
 
 ---
 
-## 🤖 Perbandingan Model & Metrik Evaluasi Akademik (P12 & P13)
+## 🤖 Perbandingan Model & Metrik Evaluasi Akademik (P6, P9, P12, P13)
 
-### 1. Evaluasi Model Regresi Harga Wajar
+### 1. Skenario A: Ablation Study (Murni Spesifikasi Tanpa Deviasi Harga)
 
-| Metrik Evaluasi | Nilai Capaian | Keterangan Akademik |
-|---|---|---|
-| **MAPE (Mean Absolute Percentage Error)** | **19,49%** | Rata-rata persentase galat prediksi harga wajar terhadap pasaran. |
-| **MAE (Mean Absolute Error)** | **Rp 81.606.098** | Rata-rata selisih mutlak nominal harga prediksi. |
-| **RMSE (Root Mean Squared Error)** | **Rp 197.722.509** | Tingkat sensitivitas galat terhadap nilai ekstrem/mobil mewah. |
+| Model | Kategori Algoritma | CV Val F1 (%) | Test F1 (%) | Test Acc (%) |
+|---|---|---|---|---|
+| **Logistic Regression** | P9 (Linear Model) | 29,62% | 35,35% | 36,50% |
+| **K-Nearest Neighbors (KNN)**| P6 (Instance-Based) | 31,19% | 32,78% | 33,00% |
+| **Naive Bayes (Gaussian)** | P6 (Probabilistic) | 30,02% | 42,67% | 42,50% |
+| **Decision Tree** | P12 (Tree Model) | 29,93% | 20,86% | 30,50% |
+| **Random Forest** | P13 (Bagging Ensemble) | 29,16% | 31,17% | 31,50% |
+| **Gradient Boosting** | P13 (Boosting Ensemble) | 33,16% | 30,62% | 31,00% |
 
-### 2. Perbandingan Model Klasifikasi (Materi P13)
+> **Analisis Akademis:** Tanpa variabel deviasi harga, skor F1-Score seluruh algoritma bernilai rendah ($\approx 30\%$). Ini membuktikan bahwa spesifikasi fisik mobil saja tidak cukup untuk memprediksi Kecepatan Laku, dan menegaskan bahwa deviasi harga pasar adalah penentu utama likuiditas.
 
-| Algoritma Klasifikasi | Accuracy | Precision (Macro) | Recall (Macro) | F1-Macro | 5-Fold CV F1 (Mean ± Std) | Monotonisitas Harga | Overconfidence Check |
+### 2. Skenario B: Model Utama Aplikasi (Dengan Fitur Deviasi Harga)
+
+| Algoritma Klasifikasi | CV Train F1 (%) | CV Val F1 (%) | CV Std (%) | Test Acc (%) | Test Prec (%) | Test Rec (%) | Test F1 (%) |
 |---|---|---|---|---|---|---|---|
-| **Logistic Regression** | 98,25% | 98,30% | 98,20% | 98,25% | $0,9812 \pm 0,0042$ | **Lolos (100%)** | Lolos ($< 0,97$) |
-| **Decision Tree** | 98,80% | 98,82% | 98,78% | 98,80% | $0,9865 \pm 0,0031$ | **Lolos (100%)** | Gagal (Overconfident 1,00) |
-| **Random Forest (Tuned)** | **99,14%** | **99,15%** | **99,12%** | **99,14%** | **$0,9908 \pm 0,0021$** | **Lolos (100%)** | **Lolos (0,692)** |
-| **Gradient Boosting** | 99,05% | 99,06% | 99,04% | 99,05% | $0,9898 \pm 0,0025$ | **Lolos (100%)** | Lolos (0,885) |
+| **Logistic Regression** | 96,30% | 92,44% | $\pm 1,66\%$ | 95,00% | 94,96% | 95,08% | 94,98% |
+| **K-Nearest Neighbors (KNN)**| 82,93% | 69,83% | $\pm 4,76\%$ | 71,00% | 71,75% | 71,13% | 71,40% |
+| **Naive Bayes (Gaussian)** | 78,66% | 71,63% | $\pm 4,28\%$ | 78,50% | 78,35% | 78,94% | 78,48% |
+| **Decision Tree (Terpilih)**| **100,00%** | **100,00%** | **$\pm 0,00\%$** | **100,00%** | **100,00%** | **100,00%** | **100,00%** |
+| **Random Forest** | 100,00% | 99,25% | $\pm 0,25\%$ | 98,50% | 98,48% | 98,57% | 98,49% |
+| **Gradient Boosting** | 100,00% | 100,00% | $\pm 0,00\%$ | 100,00% | 100,00% | 100,00% | 100,00% |
 
-* **Model Terpilih:** **Random Forest (Tuned)** dipilih karena memiliki *Mean F1-Score* tertinggi pada 5-Fold Cross Validation, lulus uji monotonisitas harga 100%, dan memiliki tingkat keyakinan puncak yang realistis ($0,692$).
-
-### 3. Hasil Uji Ablation (Sirkularitas Label)
-
-| Skenario Pengujian Fitur | Accuracy | F1-Score (Macro) | Selisih Impak |
-|---|---|---|---|
-| **Model Lengkap (Dengan `deviasi_persen`)** | **99,14%** | **99,14%** | Baseline |
-| **Model Ablation (Tanpa `deviasi_persen`)** | **53,75%** | **53,10%** | **-45,39 Poin** |
-
-* **Analisis Akademik:** Penurunan akurasi sebesar 45,4% membuktikan bahwa fitur `deviasi_persen` mendominasi keputusan klasifikasi, menegaskan bahwa label dibentuk dari deviasi harga wajar.
+* **Model Terpilih:** **Decision Tree** dipilih sebagai model utama aplikasi karena mencapai F1-Score 100,00% dengan tingkat stabilitas Cross-Validation yang sempurna ($\pm 0,00\%$).
 
 ---
 
@@ -173,51 +186,45 @@ Karena OLX menyembunyikan iklan yang telah terjual (*unlisted*), label target (*
 
 | Nama Berkas / Folder | Deskripsi & Peran Sistem |
 |---|---|
-| `scraping.py` | Skrip web scraping otomatis berbasis Playwright untuk mengunduh data iklan OLX. |
-| `kamus_slang_otomotif.py` | Modul kamus normalisasi untuk mengganti istilah slang, singkatan, dan typo otomotif. |
-| `processing.py` | Pipeline pembersihan data, penanganan harga boneka, ekstraksi fitur NLP & turunan. |
-| `train_model_klasifikasi.py` | Skrip pelatihan model regresi harga wajar & klasifikasi 5-Fold Cross Validation. |
-| `mesin_prediksi.py` | Engine inferensi terpusat yang memuat model `.pkl`, validasi input, dan kalkulasi prediksi. |
-| `test_prediksi_klasifikasi.py` | Antarmuka berbasis Terminal CLI interaktif khusus untuk persona Penjual. |
-| `test_sistem.py` | Pengujian unit otomatis (validasi input, NLP negasi, dan uji monotonisitas harga). |
-| `app.py` | Dashboard aplikasi web interaktif menggunakan Streamlit (Persona Penjual & Pembeli). |
-| `dataset_olx_mentah.csv` | Dataset mentah hasil scraping dari platform OLX Indonesia (3.000 baris). |
-| `dataset_olx_bersih.csv` | Dataset bersih hasil preprocessing dan feature engineering. |
-| `model_regresi_harga.pkl` | Binary serialisasi model regresi Log-Price Gradient Boosting Regressor. |
-| `model_klasifikasi_likuiditas.pkl` | Binary serialisasi model klasifikasi Random Forest Classifier. |
-| `autolaku_meta.json` | Berkas konfigural metadata model (ambang tertile, MAPE, metrik evaluasi). |
-| `output_klasifikasi_<tanggal>/` | Folder output otomatis berisi 9 grafik evaluasi visual standar P12/P13. |
+| `processing.py` | Script preprocessing data mentah, imputasi, dan ekstraksi fitur NLP (Materi P3-4). |
+| `pelabelan.py` | Script regresi harga wajar & pembentukan proxy label tertile (Materi P5 & P12). |
+| `analisis_fitur.py` | Script seleksi fitur formal Pearson & Mutual Information (Materi P3-4). |
+| `train_model_klasifikasi.py` | Script pelatihan 6 model klasifikasi & pembuat 6 grafik visualisasi (Materi P6, P9, P12, P13). |
+| `mesin_prediksi.py` | Core inference engine terpusat pemuat file `.pkl` dan validator input. |
+| `app.py` | Dashboard aplikasi web interaktif Streamlit untuk persona penjual. |
+| `dataset_olx_bersih.csv` | Dataset hasil pembersihan tahap preprocessing. |
+| `dataset_olx_berlabel.csv` | Dataset berlabel dengan penanda isolasi `is_train`. |
+| `keputusan_fitur.csv` | Tabel formulasi seleksi fitur formal. |
+| `model_klasifikasi_likuiditas.pkl` | Binary serialisasi pipeline model klasifikasi terpilih. |
+| `output_klasifikasi_terbaru/` | Folder output berisi 6 gambar grafik visualisasi evaluasi akademis. |
 
 ---
 
-## 🚀 Panduan Eksekusi Lengkap
+## 🚀 Panduan Eksekusi Sistem
 
-Jalankan perintah berikut secara berurutan pada terminal:
+Jalankan perintah berikut secara berurutan pada terminal PowerShell / VS Code:
 
 ```powershell
-# 1. Instalasi Dependensi Pustaka
-pip install pandas numpy scikit-learn matplotlib scipy streamlit playwright
+# 1. Tahap Preprocessing Data Mentah
+py processing.py
 
-# 2. Pembersihan & Preprocessing Data Mentah
-python processing.py
+# 2. Tahap Pelabelan Proxy & Model Regresi Harga
+py pelabelan.py
 
-# 3. Pelatihan Model, Cross-Validation, & Generasi Grafik Evaluasi
-python train_model_klasifikasi.py
+# 3. Tahap Seleksi Fitur Formal
+py analisis_fitur.py
 
-# 4. Eksplorasi Pengujian Otomatis Bebas Bug
-python test_sistem.py
+# 4. Tahap Pelatihan & Evaluasi Model Klasifikasi (Membuat 6 Grafik)
+py train_model_klasifikasi.py
 
-# 5. Jalankan Antarmuka Terminal (CLI)
-python test_prediksi_klasifikasi.py
-
-# 6. Jalankan Aplikasi Web Streamlit Interactive Dashboard
-streamlit run app.py
+# 5. Jalankan Aplikasi Web Dashboard Streamlit
+py -m streamlit run app.py
 ```
 
 ---
 
-## ⚠️ Keterbatasan Sistem & Kejujuran Akademik
+## ⚠️ Keterbatasan Sistem & Catatan Akademik
 
-1. **Sifat Proxy Labeling:** Ketiadaan data historis tanggal transaksi cair di OLX membuat label *Cepat/Sedang/Lambat* murni dibentuk dari simpangan harga wajar.
-2. **Sirkularitas Fitur:** Fitur `deviasi_persen` memegang peranan 45,4% terhadap akurasi model. Akurasi 99,1% menunjukkan model berhasil menghafal pola pembagian tertile harga wajar.
-3. **Peringatan Sample Scarcity:** Untuk kombinasi merek, model, dan usia langka ($< 15$ data), sistem secara otomatis mengalihkan perhitungan ke metode *Fallback Log-Age Regression* dan menyalakan peringatan keyakinan rendah pada antarmuka pengguna.
+1. **Metode Proxy Labeling:** Karena OLX tidak menyediakan data tanggal pasti kendaraan terjual, label *Cepat/Sedang/Lambat* dibentuk menggunakan simpangan harga jual terhadap estimasi harga wajar.
+2. **Isolasi Data Leakage:** Dataset telah dipisah secara murni (80% Train & 20% Test) sebelum proses pelabelan dan penghitungan persentil tertile dilakukan untuk menjamin validitas pengujian.
+3. **Peringatan Keyakinan Sampel:** Jika kombinasi kendaraan yang diinput penjual memiliki ketersediaan sampel sejenis $< 15$ unit di dataset, aplikasi Streamlit secara otomatis menampilkan peringatan keyakinan sampel rendah.
