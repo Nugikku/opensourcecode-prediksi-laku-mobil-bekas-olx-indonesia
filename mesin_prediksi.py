@@ -70,14 +70,17 @@ def validasi_harga(nilai):
 # ---------------- muat sistem ----------------
 def muat_sistem(folder="."):
     p = lambda n: os.path.join(folder, n)
-    wajib = ["model_klasifikasi_likuiditas.pkl", "model_regresi_harga.pkl", "autolaku_meta.json", "dataset_olx_bersih.csv"]
+    wajib = ["model_klasifikasi_likuiditas.pkl", "model_regresi_harga.pkl", "autolaku_meta.json", "dataset_olx_berlabel.csv"]
     hilang = [n for n in wajib if not os.path.exists(p(n))]
     if hilang:
-        raise FileNotFoundError(f"File belum ada: {hilang}. Jalankan processing.py lalu train_model_klasifikasi.py.")
+        raise FileNotFoundError(f"File belum ada: {hilang}. Jalankan processing.py, pelabelan.py, analisis_fitur.py, lalu train_model_klasifikasi.py.")
     with open(p("model_klasifikasi_likuiditas.pkl"), "rb") as f: klasifikasi = pickle.load(f)
     with open(p("model_regresi_harga.pkl"), "rb") as f: regresi = pickle.load(f)
     meta = json.load(open(p("autolaku_meta.json")))
-    df = pd.read_csv(p("dataset_olx_bersih.csv"))
+    df_all = pd.read_csv(p("dataset_olx_berlabel.csv"))
+    # Referensi (jumlah pembanding, fallback harga, rentang tahun) = data TRAIN saja,
+    # sama dengan yang dipakai pelabelan.py -> konsisten dan tanpa kebocoran.
+    df = df_all[df_all['split'] == 'train'].reset_index(drop=True)
     return {"klasifikasi": klasifikasi, "regresi": regresi, "meta": meta, "df": df}
 
 def daftar_pilihan(sistem):
@@ -88,7 +91,12 @@ def daftar_pilihan(sistem):
     return ok
 
 # ---------------- prediksi ----------------
-def prediksi(sistem, merek, model, tahun, transmisi, km, harga_iklan, deskripsi="", tipe_penjual="Individu"):
+def _pilih_kolom(pipeline, df):
+    """Kirim ke model hanya kolom yang dilihatnya saat training."""
+    kolom = getattr(pipeline, "feature_names_in_", None)
+    return df[list(kolom)] if kolom is not None else df
+
+def prediksi(sistem, merek, model, tahun, transmisi, km, harga_iklan, deskripsi=""):
     tahun = validasi_tahun(tahun)
     transmisi = validasi_transmisi(transmisi)
     km = validasi_km(km)
@@ -104,20 +112,22 @@ def prediksi(sistem, merek, model, tahun, transmisi, km, harga_iklan, deskripsi=
     teks = ekstrak_fitur_teks("", deskripsi)
 
     dasar = pd.DataFrame([{
-        'merek': merek, 'model': model, 'transmisi': transmisi, 'tipe_penjual': tipe_penjual,
-        'ada_garansi': teks['ada_garansi'], 'tahun': tahun, 'jarak_tempuh': km,
-        'usia_mobil': usia, 'km_per_tahun': km_per_tahun}])
+        'merek': merek, 'model': model, 'transmisi': transmisi,
+        'ada_garansi': teks['ada_garansi'], 'riwayat_negatif': teks['riwayat_negatif'],
+        'catatan_servis': teks['catatan_servis'], 'pajak_hidup': teks['pajak_hidup'],
+        'tahun': tahun, 'jarak_tempuh': km, 'usia_mobil': usia, 'km_per_tahun': km_per_tahun}])
 
-    harga_model = float(sistem["regresi"].predict(dasar)[0])
+    harga_model = float(sistem["regresi"].predict(_pilih_kolom(sistem["regresi"], dasar))[0])
     bracket = (usia // 5) * 5
     sampel = int((sub['usia_bracket'] == bracket).sum())
     harga_wajar, sumber = pilih_harga_wajar(harga_model, sampel, df, merek, model, usia)
 
     deviasi = klip_deviasi((harga_iklan - harga_wajar) / harga_wajar * 100)
-    status = sistem["klasifikasi"].predict(dasar.assign(deviasi_persen=deviasi))[0]
+    x_kls = _pilih_kolom(sistem["klasifikasi"], dasar.assign(deviasi_persen=deviasi))
+    status = sistem["klasifikasi"].predict(x_kls)[0]
     proba = None
     if hasattr(sistem["klasifikasi"].named_steps['clf'], "predict_proba"):
-        pr = sistem["klasifikasi"].predict_proba(dasar.assign(deviasi_persen=deviasi))[0]
+        pr = sistem["klasifikasi"].predict_proba(x_kls)[0]
         proba = dict(zip(sistem["klasifikasi"].named_steps['clf'].classes_, map(float, pr)))
 
     peringatan = []
@@ -133,8 +143,12 @@ def prediksi(sistem, merek, model, tahun, transmisi, km, harga_iklan, deskripsi=
     if harga_iklan < 0.3 * harga_wajar or harga_iklan > 3 * harga_wajar:
         peringatan.append("Harga jual sangat jauh dari harga wajar; periksa kembali angka yang diketik.")
 
-    return {"status": status, "proba": proba, "harga_wajar": harga_wajar, "sumber_harga_wajar": sumber,
-            "deviasi_persen": deviasi, "harga_iklan": harga_iklan, "km_per_tahun": km_per_tahun,
-            "ada_garansi": teks['ada_garansi'], "indikasi_kredit_tdp": teks['indikasi_kredit_tdp'],
-            "jumlah_sampel": sampel, "keyakinan_rendah": sampel < AMBANG_KEYAKINAN_SAMPEL,
-            "peringatan": peringatan, "usia_mobil": usia, "transmisi": transmisi, "tahun": tahun, "km": km}
+    return {
+        "status": status, "proba": proba, "harga_wajar": harga_wajar, "sumber_harga_wajar": sumber,
+        "deviasi_persen": deviasi, "harga_iklan": harga_iklan, "km_per_tahun": km_per_tahun,
+        "ada_garansi": teks['ada_garansi'], "riwayat_negatif": teks['riwayat_negatif'],
+        "catatan_servis": teks['catatan_servis'], "pajak_hidup": teks['pajak_hidup'],
+        "indikasi_kredit_tdp": teks['indikasi_kredit_tdp'],
+        "jumlah_sampel": sampel, "keyakinan_rendah": sampel < AMBANG_KEYAKINAN_SAMPEL,
+        "peringatan": peringatan, "usia_mobil": usia, "transmisi": transmisi, "tahun": tahun, "km": km
+    }

@@ -1,0 +1,18 @@
+{
+  "dipertahankan": [
+    "merek",
+    "model",
+    "transmisi",
+    "ada_garansi",
+    "riwayat_negatif",
+    "catatan_servis",
+    "pajak_hidup",
+    "tahun",
+    "jarak_tempuh",
+    "km_per_tahun"
+  ],
+  "dibuang": {
+    "tipe_penjual": "konstan (hanya satu nilai, tidak membawa informasi)",
+    "usia_mobil": "redundan dengan tahun (r=0.9995)"
+  }
+}

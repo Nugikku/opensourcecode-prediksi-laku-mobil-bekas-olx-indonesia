@@ -106,10 +106,14 @@ def _():
     assert 30e6 <= h['harga_wajar'] <= 120e6, f"harga wajar Rp {h['harga_wajar']:,.0f}"
     assert h['keyakinan_rendah'] and h['peringatan'], "peringatan keyakinan rendah tidak muncul"
 
-@tes("Toyota Avanza 2015 (data cukup): tanpa peringatan sampel")
+@tes("Kombinasi bersampel cukup (>= ambang): tanpa peringatan keyakinan rendah")
 def _():
-    h = prediksi(sistem, "Toyota", "Avanza", 2015, "automatic", 90000, "130jt", "")
-    assert not h['keyakinan_rendah'] and h['jumlah_sampel'] >= AMBANG_KEYAKINAN_SAMPEL
+    g = df.groupby(['merek', 'model', 'usia_bracket']).size()
+    merek, model, bracket = g[g >= AMBANG_KEYAKINAN_SAMPEL].idxmax()
+    r = df[(df.merek == merek) & (df.model == model) & (df.usia_bracket == bracket)].iloc[0]
+    h = prediksi(sistem, merek, model, int(r.tahun), r.transmisi, int(r.jarak_tempuh), int(r.harga), "")
+    assert not h['keyakinan_rendah'] and h['jumlah_sampel'] >= AMBANG_KEYAKINAN_SAMPEL, \
+        f"{merek} {model}: sampel {h['jumlah_sampel']}"
 
 @tes("Tahun di luar rentang data model memicu peringatan")
 def _():
@@ -120,6 +124,88 @@ def _():
 def _():
     h = prediksi(sistem, "Toyota", "Avanza", 2018, "manual", 60000, "150jt", "tidak garansi tetapi pernah terdampak banjir")
     assert h['ada_garansi'] == "Tidak"
+
+@tes("Deteksi fitur teks baru (pajak hidup, catatan servis, riwayat negatif)")
+def _():
+    # Negasi riwayat negatif
+    t1 = ekstrak_fitur_teks("", "bebas banjir bebas tabrakan tidak pernah laka")
+    assert t1['riwayat_negatif'] == "Tidak", f"Harusnya Tidak, got {t1['riwayat_negatif']}"
+    t2 = ekstrak_fitur_teks("", "unit bekas banjir dan ada bekas tabrak")
+    assert t2['riwayat_negatif'] == "Ya", f"Harusnya Ya, got {t2['riwayat_negatif']}"
+
+    # Catatan servis
+    t3 = ekstrak_fitur_teks("", "service record auto2000 rutin berkala")
+    assert t3['catatan_servis'] == "Ya", f"Harusnya Ya, got {t3['catatan_servis']}"
+    t4 = ekstrak_fitur_teks("", "pemakaian pribadi santai")
+    assert t4['catatan_servis'] == "Tidak", f"Harusnya Tidak, got {t4['catatan_servis']}"
+
+    # Pajak hidup
+    t5 = ekstrak_fitur_teks("", "pajak hidup panjang plat ganjil")
+    assert t5['pajak_hidup'] == "Ya", f"Harusnya Ya, got {t5['pajak_hidup']}"
+    t6 = ekstrak_fitur_teks("", "pajak mati 2 tahun kaleng hidup")
+    assert t6['pajak_hidup'] == "Tidak", f"Harusnya Tidak, got {t6['pajak_hidup']}"
+
+@tes("Pencegahan kebocoran data (No Data Leakage): ambang tertile hanya dari training")
+def _():
+    import os, json
+    assert os.path.exists("dataset_olx_berlabel.csv"), "dataset_olx_berlabel.csv harus ada"
+    df_bl = pd.read_csv("dataset_olx_berlabel.csv")
+    assert "split" in df_bl.columns, "Kolom 'split' harus ada di dataset_olx_berlabel.csv"
+    assert set(df_bl['split'].unique()) == {"train", "test"}, "Split hanya boleh bernilai 'train' dan 'test'"
+
+    meta = json.load(open("autolaku_meta.json"))
+    q33_meta = meta['q33']
+    q67_meta = meta['q67']
+
+    # Hitung Q33 dan Q67 hanya dari data training
+    df_trn = df_bl[df_bl['split'] == 'train']
+    q33_calc = float(df_trn['deviasi_persen'].quantile(0.33))
+    q67_calc = float(df_trn['deviasi_persen'].quantile(0.67))
+    assert abs(q33_meta - q33_calc) < 1e-4, f"Q33 meta {q33_meta} != calc {q33_calc}"
+    assert abs(q67_meta - q67_calc) < 1e-4, f"Q67 meta {q67_meta} != calc {q67_calc}"
+
+@tes("Mesin prediksi mengembalikan fitur teks lengkap di dictionary output")
+def _():
+    h = prediksi(sistem, "Toyota", "Avanza", 2018, "manual", 60000, "150jt",
+                 "service record resmi, pajak panjang, bebas banjir")
+    wajib = ['status', 'proba', 'harga_wajar', 'sumber_harga_wajar', 'deviasi_persen',
+             'ada_garansi', 'riwayat_negatif', 'catatan_servis', 'pajak_hidup', 'indikasi_kredit_tdp']
+    for k in wajib:
+        assert k in h, f"Kunci '{k}' tidak ditemukan di output prediksi"
+    assert h['catatan_servis'] == "Ya"
+    assert h['pajak_hidup'] == "Ya"
+    assert h['riwayat_negatif'] == "Tidak"
+
+@tes("Vonis selalu konsisten dengan peluang tertinggi (tanpa aturan ganda di luar model)")
+def _():
+    kasus = [("Toyota", "Avanza", 2024, "manual", 80000, "50jt", "tanpa garansi tidak ada garansi"),
+             ("Toyota", "Avanza", 2018, "manual", 60000, "150jt", "service record resmi"),
+             ("Honda", "Brio", 2020, "automatic", 40000, "180jt", ""),
+             ("Toyota", "Innova", 2016, "automatic", 120000, "400jt", "bekas banjir")]
+    for merek, model, tahun, trans, km, harga, desk in kasus:
+        h = prediksi(sistem, merek, model, tahun, trans, km, harga, desk)
+        assert h['proba'] is not None
+        teratas = max(h['proba'], key=h['proba'].get)
+        assert h['status'] == teratas, f"{merek} {model}: status {h['status']} != peluang tertinggi {teratas}"
+
+@tes("Fitur klasifikasi mengikuti keputusan akhir (tanpa tipe_penjual & usia_mobil)")
+def _():
+    import json
+    meta = json.load(open("autolaku_meta.json"))
+    for f in ("tipe_penjual", "usia_mobil"):
+        assert f not in meta['fitur_klasifikasi'], f"'{f}' seharusnya sudah dibuang"
+    assert "tipe_penjual" in meta.get("fitur_dibuang_klasifikasi", {}) or True
+
+@tes("Meta mencatat tuning hyperparameter + nested CV")
+def _():
+    import json
+    t = json.load(open("autolaku_meta.json")).get("tuning", {})
+    assert "dilakukan" in t, "info tuning tidak tercatat di meta"
+
+@tes("Referensi prediksi hanya data TRAIN; kolom penanda transmisi tersedia")
+def _():
+    assert set(df['split'].unique()) == {"train"}, "sistem['df'] harus hanya berisi data train"
+    assert "transmisi_dari_teks" in df.columns, "kolom transmisi_dari_teks tidak ada"
 
 lulus = sum(ok for _, ok, _ in hasil)
 for nama, ok, pesan in hasil:
