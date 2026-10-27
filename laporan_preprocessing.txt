@@ -1,0 +1,110 @@
+===========================================================================
+AUTOLAKU PREPROCESSING PIPELINE (P3-4)
+===========================================================================
+  [01_data_mentah] -> 3,000 baris (setelah pd.read_csv)
+
+--- Missing Value (data mentah) ---
+  deskripsi                     :     1 (0.0%)
+  tahun                         : 3,000 (100.0%)
+
+>>> TAHAP 1: Ekstraksi fitur dasar (tahun, transmisi, model)
+  Transmisi tidak disebut di iklan (diasumsikan 'automatic'): 1,021 baris (34.0%) -> ditandai kolom transmisi_dari_teks=0
+  [02_setelah_ekstraksi] -> 3,000 baris (belum ada baris yang dihapus)
+
+>>> TAHAP 2: Pembersihan angka (harga, jarak_tempuh)
+  Harga tidak valid/boneka → NULL: 1
+  Jarak tempuh tidak valid → NULL: 0
+
+>>> TAHAP 3: Filter validitas harga & tahun
+  [03_setelah_dropna_harga_tahun] -> 2,679 baris (drop baris tanpa harga/tahun)
+  [04_setelah_filter_harga] -> 2,660 baris (harga 25jt-3M)
+  [05_setelah_filter_tahun] -> 2,638 baris (tahun 1995-2026)
+
+>>> TAHAP 4: Standardisasi format (merek, model, transmisi)
+  [06_setelah_filter_merek] -> 2,638 baris (hapus merek tidak valid)
+
+--- Standardisasi 'merek' ---
+  Varian sebelum: 51 → sesudah: 42
+  Varian yang dinormalisasi: ['BMW', 'BYD', 'Bentley', 'DFSK', 'DFSK (Dongfeng Sokon)', 'GWM', 'Hino', 'Jaguar', 'Lain-lain', 'Lamborghini', 'MG', 'Smart', 'Volvo', 'baic']
+
+--- Standardisasi 'transmisi' ---
+  Varian sebelum: 1 → sesudah: 2
+  Varian yang dinormalisasi: ['Lainnya']
+
+  Distribusi transmisi: {'automatic': np.int64(2278), 'manual': np.int64(360)}
+  Merek unik: 42
+  Model unik: 151
+
+>>> TAHAP 5: Imputasi jarak tempuh
+  Baris yang perlu diimputasi: 0 (0.0%)
+
+  Perbandingan distribusi jarak_tempuh:
+  Statistik    |         Sebelum |         Sesudah
+  -------------+-----------------+----------------
+  mean         |          61,244 |          61,244
+  median       |          52,500 |          52,500
+  std          |          52,176 |          52,176
+  min          |               0 |               0
+  max          |         300,000 |         300,000
+
+>>> TAHAP 6: Feature engineering
+
+>>> TAHAP 7: Deteksi noise berbasis aturan domain
+  Baris ditandai noise: 10 (0.4%)
+    - km<100&usia>5: 9
+    - km/tahun>80rb: 1
+  [CATATAN] Baris noise DITANDAI, TIDAK dihapus.
+
+>>> TAHAP 8: Deteksi outlier IQR pada log-harga per merek+usia_bracket
+  Baris ditandai outlier harga: 74 (2.8%)
+  [CATATAN] Outlier DITANDAI, TIDAK dihapus — mobil mewah bisa valid.
+  [CATATAN P3-4] Pembeda noise vs outlier: noise = data SALAH (entri error), outlier = data BENAR tapi EKSTREM (mobil langka/mewah).
+
+>>> TAHAP 9: Ekstraksi fitur teks (diperluas)
+  ada_garansi: {'Ya': np.int64(1463), 'Tidak': np.int64(1175)}
+  riwayat_negatif: {'Tidak': np.int64(2260), 'Ya': np.int64(378)}
+  catatan_servis: {'Tidak': np.int64(1695), 'Ya': np.int64(943)}
+  pajak_hidup: {'Tidak': np.int64(1984), 'Ya': np.int64(654)}
+  indikasi_kredit_tdp: {0: np.int64(1446), 1: np.int64(1192)}
+
+>>> TAHAP 10: Normalisasi tipe penjual
+  Distribusi: {'Individu': np.int64(2638)}
+
+>>> TAHAP 11: Hapus duplikat
+  [07_setelah_dedup] -> 2,334 baris (hapus 304 duplikat)
+
+>>> TAHAP 12: Indikator kecukupan sampel
+  1,440 dari 2,334 baris (61.7%) berada di kombinasi merek+model+usia dgn sampel < 15
+
+===========================================================================
+CATATAN METODOLOGI (P3-4)
+===========================================================================
+
+[SMOOTHING] Tidak dipakai. Teknik smoothing (moving average, exponential smoothing, dll.) cocok untuk data deret waktu (time series). Data ini adalah data cross-sectional (snapshot iklan), bukan urutan temporal, sehingga smoothing tidak relevan.
+
+[DATA INTEGRATION] Tidak relevan. Data bersumber tunggal dari OLX. Tidak ada penggabungan dari sumber lain yang memerlukan resolusi entitas, penanganan konflik, atau deduplikasi lintas-sumber.
+
+===========================================================================
+RINGKASAN PIPELINE
+===========================================================================
+
+Data bersih siap tahap selanjutnya: 2,334 baris
+Rentang Harga : Rp 25,500,000 s/d Rp 3,000,000,000
+Merek Teratas :
+merek
+Toyota           662
+Honda            411
+Mitsubishi       155
+Mercedes-Benz    152
+Daihatsu         139
+
+Alur baris:
+  01_data_mentah                            3,000  setelah pd.read_csv
+  02_setelah_ekstraksi                      3,000  belum ada baris yang dihapus
+  03_setelah_dropna_harga_tahun             2,679  drop baris tanpa harga/tahun
+  04_setelah_filter_harga                   2,660  harga 25jt-3M
+  05_setelah_filter_tahun                   2,638  tahun 1995-2026
+  06_setelah_filter_merek                   2,638  hapus merek tidak valid
+  07_setelah_dedup                          2,334  hapus 304 duplikat
+
+[SUKSES] Dataset berhasil disimpan ke 'dataset_olx_bersih.csv'.

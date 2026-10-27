@@ -1,0 +1,195 @@
+{
+  "1_pemilihan_model": {
+    "skenario_1_tanpa_deviasi": [
+      {
+        "Model": "Logistic Regression",
+        "F1_Val_Mean": 0.439494311673562,
+        "F1_Val_Std": 0.01489292033201963,
+        "F1_Train_Mean": 0.5411307925632654,
+        "Gap_Train_Val": 0.10163648088970334,
+        "Accuracy_OOF": 0.44755244755244755,
+        "RMSE_Ordinal": 1.0439507860428083,
+        "Biaya_Berbobot": 0.7315761161915008
+      },
+      {
+        "Model": "KNN (K=3)",
+        "F1_Val_Mean": 0.4441999335093841,
+        "F1_Val_Std": 0.015256534423778629,
+        "F1_Train_Mean": 0.6970728304879922,
+        "Gap_Train_Val": 0.2528728969786081,
+        "Accuracy_OOF": 0.4448628294782141,
+        "RMSE_Ordinal": 1.0529295181535332,
+        "Biaya_Berbobot": 0.7396449704142012
+      },
+      {
+        "Model": "KNN (K=5)",
+        "F1_Val_Mean": 0.4190742450967234,
+        "F1_Val_Std": 0.010258350380719969,
+        "F1_Train_Mean": 0.6356066715002766,
+        "Gap_Train_Val": 0.2165324264035532,
+        "Accuracy_OOF": 0.42011834319526625,
+        "RMSE_Ordinal": 1.097456593055845,
+        "Biaya_Berbobot": 0.7880580957504034
+      },
+      {
+        "Model": "KNN (K=7)",
+        "F1_Val_Mean": 0.41542118496079716,
+        "F1_Val_Std": 0.009224138681083344,
+        "F1_Train_Mean": 0.6006392209337801,
+        "Gap_Train_Val": 0.18521803597298292,
+        "Accuracy_OOF": 0.41581495427649273,
+        "RMSE_Ordinal": 1.0801649506452589,
+        "Biaya_Berbobot": 0.778375470683163
+      },
+      {
+        "Model": "KNN (K=9)",
+        "F1_Val_Mean": 0.4316217689605157,
+        "F1_Val_Std": 0.02211280978062556,
+        "F1_Train_Mean": 0.5770020344452228,
+        "Gap_Train_Val": 0.14538026548470712,
+        "Accuracy_OOF": 0.43302850995158687,
+        "RMSE_Ordinal": 1.0570086792626534,
+        "Biaya_Berbobot": 0.750403442711135
+      },
+      {
+        "Model": "Naive Bayes (Bernoulli, diskretisasi)",
+        "F1_Val_Mean": 0.44640010352722925,
+        "F1_Val_Std": 0.027206282105721163,
+        "F1_Train_Mean": 0.5285397099671761,
+        "Gap_Train_Val": 0.08213960643994689,
+        "Accuracy_OOF": 0.4577729962345347,
+        "RMSE_Ordinal": 1.005899756201694,
+        "Biaya_Berbobot": 0.6987627756858527
+      },
+      {
+        "Model": "Decision Tree",
+        "F1_Val_Mean": 0.41105274082890186,
+        "F1_Val_Std": 0.02221253983897367,
+        "F1_Train_Mean": 0.6335412556486844,
+        "Gap_Train_Val": 0.2224885148197825,
+        "Accuracy_OOF": 0.4179666487358795,
+        "RMSE_Ordinal": 1.0128278893833054,
+        "Biaya_Berbobot": 0.7299623453469607
+      },
+      {
+        "Model": "Random Forest",
+        "F1_Val_Mean": 0.4857496793821504,
+        "F1_Val_Std": 0.019794475407235564,
+        "F1_Train_Mean": 0.8619905402712978,
+        "Gap_Train_Val": 0.37624086088914743,
+        "Accuracy_OOF": 0.49273803119956966,
+        "RMSE_Ordinal": 0.9406829149202233,
+        "Biaya_Berbobot": 0.6331360946745562
+      },
+      {
+        "Model": "Gradient Boosting",
+        "F1_Val_Mean": 0.46302091830774234,
+        "F1_Val_Std": 0.02264403825235489,
+        "F1_Train_Mean": 0.7365547072730961,
+        "Gap_Train_Val": 0.2735337889653538,
+        "Accuracy_OOF": 0.4658418504572351,
+        "RMSE_Ordinal": 0.9840033062566635,
+        "Biaya_Berbobot": 0.6788596019365251
+      }
+    ],
+    "skenario_2_dengan_deviasi": [
+      {
+        "Model": "Logistic Regression",
+        "F1_Val_Mean": 0.9384195639992157,
+        "F1_Val_Std": 0.015379625357987689,
+        "F1_Train_Mean": 0.9728561706736407,
+        "Gap_Train_Val": 0.03443660667442505,
+        "Accuracy_OOF": 0.9376008606777838,
+        "RMSE_Ordinal": 0.24979819719568883,
+        "Biaya_Berbobot": 0.062399139322216246,
+        "Pelanggaran_Monoton_%": 0.0,
+        "Rerata_Keyakinan_Puncak": 0.8483244047622176
+      },
+      {
+        "Model": "KNN (K=5)",
+        "F1_Val_Mean": 0.6158944865969594,
+        "F1_Val_Std": 0.011483547611282981,
+        "F1_Train_Mean": 0.7693028982028914,
+        "Gap_Train_Val": 0.153408411605932,
+        "Accuracy_OOF": 0.6137708445400754,
+        "RMSE_Ordinal": 0.7389130321420729,
+        "Biaya_Berbobot": 0.4394835933297472,
+        "Pelanggaran_Monoton_%": 6.666666666666667,
+        "Rerata_Keyakinan_Puncak": 0.7030661646046261
+      },
+      {
+        "Model": "Naive Bayes (Bernoulli, diskretisasi)",
+        "F1_Val_Mean": 0.8751373909782633,
+        "F1_Val_Std": 0.007836407204305043,
+        "F1_Train_Mean": 0.8936758975383177,
+        "Gap_Train_Val": 0.018538506560054402,
+        "Accuracy_OOF": 0.8735879505110274,
+        "RMSE_Ordinal": 0.3555447222066059,
+        "Biaya_Berbobot": 0.12641204948897256,
+        "Pelanggaran_Monoton_%": 0.0,
+        "Rerata_Keyakinan_Puncak": 0.9191132357490751
+      },
+      {
+        "Model": "Decision Tree",
+        "F1_Val_Mean": 0.9978565604793361,
+        "F1_Val_Std": 0.0020051081065387572,
+        "F1_Train_Mean": 1.0,
+        "Gap_Train_Val": 0.00214343952066387,
+        "Accuracy_OOF": 0.9978483055406132,
+        "RMSE_Ordinal": 0.04638636070427132,
+        "Biaya_Berbobot": 0.002151694459386767,
+        "Pelanggaran_Monoton_%": 0.0,
+        "Rerata_Keyakinan_Puncak": 1.0
+      },
+      {
+        "Model": "Random Forest",
+        "F1_Val_Mean": 0.9941139301740398,
+        "F1_Val_Std": 0.004604963720164338,
+        "F1_Train_Mean": 1.0,
+        "Gap_Train_Val": 0.005886069825960183,
+        "Accuracy_OOF": 0.9940828402366864,
+        "RMSE_Ordinal": 0.07692307692307693,
+        "Biaya_Berbobot": 0.005917159763313609,
+        "Pelanggaran_Monoton_%": 0.0,
+        "Rerata_Keyakinan_Puncak": 0.7213275750005734
+      },
+      {
+        "Model": "Gradient Boosting",
+        "F1_Val_Mean": 0.9978565604793361,
+        "F1_Val_Std": 0.0020051081065387572,
+        "F1_Train_Mean": 1.0,
+        "Gap_Train_Val": 0.00214343952066387,
+        "Accuracy_OOF": 0.9978483055406132,
+        "RMSE_Ordinal": 0.04638636070427132,
+        "Biaya_Berbobot": 0.002151694459386767,
+        "Pelanggaran_Monoton_%": 0.0,
+        "Rerata_Keyakinan_Puncak": 0.999999981985821
+      }
+    ]
+  },
+  "2_model_terpilih": "Random Forest",
+  "3_evaluasi_cv": {
+    "f1_macro_mean": 0.9941,
+    "f1_macro_std": 0.0046,
+    "gap_train_val": 0.0059
+  },
+  "4_evaluasi_test": {
+    "accuracy": 0.9871,
+    "f1_macro": 0.9872,
+    "precision_macro": 0.9873,
+    "recall_macro": 0.9874,
+    "rmse_ordinal": 0.1136,
+    "biaya_berbobot": 0.0129
+  },
+  "5_ablation": {
+    "dengan_deviasi": {
+      "acc": 0.9871,
+      "f1": 0.9872
+    },
+    "tanpa_deviasi": {
+      "acc": 0.514,
+      "f1": 0.5076
+    }
+  },
+  "6_interpretasi": "Lihat permutation importance dan feature importance di output grafik."
+}

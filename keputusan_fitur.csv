@@ -1,0 +1,63 @@
+﻿fitur,metode,skor,keputusan,alasan
+usia_mobil,korelasi,r=0.9995 dengan tahun,buang,Redundan dengan tahun (korelasi > 0.95). Contoh: tahun dan usia_mobil berkorelasi sempurna.
+km_per_tahun,filter (MI),MI_mean=0.0367,pertahankan,"MI tinggi, informatif"
+jarak_tempuh,filter (MI),MI_mean=0.0205,pertahankan,"MI tinggi, informatif"
+pajak_hidup,filter (MI),MI_mean=0.0202,pertahankan,"MI tinggi, informatif"
+tahun,filter (MI),MI_mean=0.0167,pertahankan,"MI tinggi, informatif"
+tipe_penjual,filter (MI),MI_mean=0.0114,pertahankan,"MI tinggi, informatif"
+usia_mobil,filter (MI),MI_mean=0.0062,evaluasi,"MI sangat rendah, kontribusi minim"
+model,filter (MI),MI_mean=0.0057,evaluasi,"MI sangat rendah, kontribusi minim"
+merek,filter (MI),MI_mean=0.0053,evaluasi,"MI sangat rendah, kontribusi minim"
+transmisi,filter (MI),MI_mean=0.0003,evaluasi,"MI sangat rendah, kontribusi minim"
+catatan_servis,filter (MI),MI_mean=0.0000,evaluasi,"MI sangat rendah, kontribusi minim"
+ada_garansi,filter (MI),MI_mean=0.0000,evaluasi,"MI sangat rendah, kontribusi minim"
+riwayat_negatif,filter (MI),MI_mean=0.0000,evaluasi,"MI sangat rendah, kontribusi minim"
+model,filter (chi2),"chi2_sum=569.17, p_min=0.0000",pertahankan,Signifikan secara statistik
+merek,filter (chi2),"chi2_sum=145.98, p_min=0.0016",pertahankan,Signifikan secara statistik
+pajak_hidup,filter (chi2),"chi2_sum=4.93, p_min=0.1541",evaluasi,Tidak signifikan (p > 0.05)
+transmisi,filter (chi2),"chi2_sum=4.33, p_min=0.1555",evaluasi,Tidak signifikan (p > 0.05)
+ada_garansi,filter (chi2),"chi2_sum=3.52, p_min=0.3894",evaluasi,Tidak signifikan (p > 0.05)
+riwayat_negatif,filter (chi2),"chi2_sum=1.20, p_min=0.5981",evaluasi,Tidak signifikan (p > 0.05)
+catatan_servis,filter (chi2),"chi2_sum=0.74, p_min=0.7903",evaluasi,Tidak signifikan (p > 0.05)
+tipe_penjual,filter (chi2),"chi2_sum=0.00, p_min=1.0000",evaluasi,Tidak signifikan (p > 0.05)
+merek,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+model,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+transmisi,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+tipe_penjual,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+ada_garansi,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+riwayat_negatif,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+catatan_servis,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+pajak_hidup,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+tahun,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+jarak_tempuh,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+usia_mobil,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+km_per_tahun,wrapper (RFE),terpilih=True,pertahankan,Terpilih oleh RFE
+model,embedded (RF),importance=0.2935,pertahankan,Kontribusi penting menurut RF
+merek,embedded (RF),importance=0.1265,pertahankan,Kontribusi penting menurut RF
+km_per_tahun,embedded (RF),importance=0.1261,pertahankan,Kontribusi penting menurut RF
+jarak_tempuh,embedded (RF),importance=0.1112,pertahankan,Kontribusi penting menurut RF
+usia_mobil,embedded (RF),importance=0.0848,pertahankan,Kontribusi penting menurut RF
+tahun,embedded (RF),importance=0.0831,pertahankan,Kontribusi penting menurut RF
+ada_garansi,embedded (RF),importance=0.0417,pertahankan,Kontribusi penting menurut RF
+catatan_servis,embedded (RF),importance=0.0404,pertahankan,Kontribusi penting menurut RF
+pajak_hidup,embedded (RF),importance=0.0377,pertahankan,Kontribusi penting menurut RF
+riwayat_negatif,embedded (RF),importance=0.0286,pertahankan,Kontribusi penting menurut RF
+transmisi,embedded (RF),importance=0.0263,pertahankan,Kontribusi penting menurut RF
+tipe_penjual,embedded (RF),importance=0.0000,evaluasi,Kontribusi sangat kecil menurut RF
+km_per_tahun,embedded (Lasso),koef=0.0416,pertahankan,Koefisien non-zero (Lasso tidak menyusutkan ke nol)
+usia_mobil,embedded (Lasso),koef=-0.0280,pertahankan,Koefisien non-zero (Lasso tidak menyusutkan ke nol)
+jarak_tempuh,embedded (Lasso),koef=0.0000,buang,Koefisien mendekati nol → Lasso menganggap tidak penting
+tahun,embedded (Lasso),koef=0.0000,buang,Koefisien mendekati nol → Lasso menganggap tidak penting
+deskripsi_bersih (TF-IDF),analisis TF-IDF,vocab_size=500,referensi,"Analisis TF-IDF menunjukkan kata-kata yang membedakan label. Fitur teks (ada_garansi, riwayat_negatif, dll.) sudah mengekstrak informasi utama dari deskripsi. TF-IDF penuh tidak dimasukkan sbg fitur classifier karena dimensi tinggi dan risiko overfitting."
+merek,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+model,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+transmisi,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+tipe_penjual,KEPUTUSAN AKHIR,,buang,"konstan (hanya satu nilai, tidak membawa informasi)"
+ada_garansi,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+riwayat_negatif,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+catatan_servis,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+pajak_hidup,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+tahun,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+jarak_tempuh,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
+usia_mobil,KEPUTUSAN AKHIR,,buang,redundan dengan tahun (r=0.9995)
+km_per_tahun,KEPUTUSAN AKHIR,,pertahankan,lolos: tidak konstan dan tidak redundan
