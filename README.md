@@ -215,6 +215,27 @@ Akurasi tinggi sebagian bersifat sirkular — classifier mempelajari ulang atura
 
 ---
 
+## Landasan Ilmiah Pelabelan
+
+Label proxy kecepatan laku dibentuk dari deviasi harga iklan terhadap harga wajar, bukan dari asumsi semata. Pendekatan ini dilandasi temuan empiris berikut:
+
+**Referensi utama (marketplace otomotif online):**
+
+> Granát, M. P., & Vékás, P. (2025). *Estimating Liquidity in Online Marketplaces via Machine Learning and Survival Analysis.* Eötvös Loránd University / Corvinus University of Budapest.
+> https://real.mtak.hu/247298/1/epj_survival.pdf
+
+Granát & Vékás (2025) membuktikan secara empiris bahwa **price-to-value ratio** — rasio antara harga iklan dan harga wajar hasil model ML — adalah prediktor terkuat dari durasi listing mobil bekas di marketplace online. Konsep ini identik dengan `deviasi_persen` yang dipakai sistem ini. Perbedaannya hanya pada tahap akhir: mereka menggunakan survival analysis untuk memprediksi durasi listing, sedangkan AutoLaku menyederhanakan output menjadi tiga kategori (Cepat/Sedang/Lambat) agar lebih mudah diinterpretasikan oleh penjual awam.
+
+**Referensi pendukung:**
+
+> Anglin, P. M., Rutherford, R., & Springer, T. M. (2003). The Trade-off Between the Selling Price of Residential Properties and Time-on-the-Market. *Journal of Real Estate Finance and Economics*, 26(1), 95–111.
+
+> Genesove, D., & Mayer, C. (2001). Loss Aversion and Seller Behavior: Evidence from the Housing Market. *Quarterly Journal of Economics*, 116(4), 1233–1260.
+
+Kedua jurnal ini membuktikan hubungan negatif antara deviasi harga listing terhadap nilai wajar dan kecepatan jual — prinsip yang sama berlaku di pasar kendaraan bekas online.
+
+---
+
 ## Lisensi
 
 Proyek ini dibuat untuk keperluan akademik (Tugas Data Mining, TI24A2). Data bersumber dari scraping publik OLX.
