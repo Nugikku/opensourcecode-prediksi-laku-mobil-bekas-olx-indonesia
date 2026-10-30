@@ -212,8 +212,8 @@ def main():
         prep = buat_prep(num_cols_active)
         hasil = []
 
-        print(f"\n{'Model':25s} | {'F1_val':>8s} | {'+/-Std':>6s} | {'F1_trn':>8s} | "
-              f"{'Gap':>7s} | {'RMSE_o':>6s}")
+        print(f"\n{'Model':25s} | {'F1 CV':>8s} | {'Std':>6s} | {'F1 Train':>9s} | "
+              f"{'Gap':>8s} | {'RMSE_o':>6s}")
         print("-" * 80)
 
         for nama, clf in kandidat.items():
@@ -250,8 +250,8 @@ def main():
                 "Biaya_Berbobot": biaya,
             })
 
-            print(f"  {nama:23s} | {f1_val_mean:>7.4f} | {f1_val_std:>5.4f} | "
-                  f"{f1_train_mean:>7.4f} | {gap:>+6.4f} | {rmse_o:>5.4f}")
+            print(f"  {nama:23s} | {f1_val_mean*100:>7.2f}% | {f1_val_std*100:>5.2f}% | "
+                  f"{f1_train_mean*100:>8.2f}% | {gap*100:>+7.2f}% | {rmse_o:>5.4f}")
 
         df_hasil = pd.DataFrame(hasil)
 
@@ -318,8 +318,12 @@ def main():
         hasil_s2.loc[hasil_s2['Model'] == nama, 'Rerata_Keyakinan_Puncak'] = keyakinan
 
     print("\nMetrik pemilihan:")
-    print(hasil_s2[['Model', 'F1_Val_Mean', 'F1_Val_Std', 'Gap_Train_Val',
-                     'Pelanggaran_Monoton_%', 'Rerata_Keyakinan_Puncak']].to_string(index=False))
+    df_tampil = hasil_s2[['Model', 'F1_Val_Mean', 'F1_Val_Std', 'Gap_Train_Val',
+                     'Pelanggaran_Monoton_%', 'Rerata_Keyakinan_Puncak']].copy()
+    for k in ['F1_Val_Mean', 'F1_Val_Std', 'Gap_Train_Val', 'Rerata_Keyakinan_Puncak']:
+        df_tampil[k] = df_tampil[k].apply(lambda v: f"{v*100:.2f}%")
+    df_tampil = df_tampil.rename(columns={'F1_Val_Mean':'F1 CV (%)','F1_Val_Std':'Std (%)','Gap_Train_Val':'Gap (%)','Rerata_Keyakinan_Puncak':'Keyakinan (%)'})
+    print(df_tampil.to_string(index=False))
 
     # Kriteria pemilihan:
     # 1. HARUS monoton (0% pelanggaran) — syarat mutlak
@@ -340,8 +344,8 @@ def main():
     best_name = best_row['Model']
     best_pipe = pipes_s2[best_name]
     print(f"\n  Model terpilih: {best_name}")
-    print(f"  F1-macro (CV): {best_row['F1_Val_Mean']:.4f} +/- {best_row['F1_Val_Std']:.4f}")
-    print(f"  Gap train-val: {best_row['Gap_Train_Val']:+.4f}")
+    print(f"  F1-macro (CV): {best_row['F1_Val_Mean']*100:.2f}% +/- {best_row['F1_Val_Std']*100:.2f}%")
+    print(f"  Gap train-val: {best_row['Gap_Train_Val']*100:+.2f}%")
     print(f"  Monotonisitas: {best_row.get('Pelanggaran_Monoton_%', 'N/A')}")
 
     # ============================================================
@@ -377,10 +381,10 @@ def main():
         aman = (langgar_tuned == 0) and (keyakinan_tuned <= 0.97)
         pakai = bool(lebih_baik and aman)
         print(f"  Model            : {best_name}")
-        print(f"  F1 default (CV)  : {f1_def:.4f} +/- {std_def:.4f}")
-        print(f"  F1 nested CV     : {skor_nested.mean():.4f} +/- {skor_nested.std():.4f}  (estimasi tanpa bias utk prosedur tuning)")
+        print(f"  F1 default (CV)  : {f1_def*100:.2f}% +/- {std_def*100:.2f}%")
+        print(f"  F1 nested CV     : {skor_nested.mean()*100:.2f}% +/- {skor_nested.std()*100:.2f}%  (estimasi tanpa bias utk prosedur tuning)")
         print(f"  Parameter terbaik: {cari.best_params_}")
-        print(f"  Monoton/keyakinan: {langgar_tuned}% pelanggaran | keyakinan {keyakinan_tuned:.3f}")
+        print(f"  Monoton/keyakinan: {langgar_tuned:.2f}% pelanggaran | keyakinan {keyakinan_tuned*100:.2f}%")
         alasan = ("lebih baik > 1 std dan aman" if pakai else
                   "selisih dengan default tidak bermakna (< 1 std)" if not lebih_baik else
                   "ditolak: melanggar monotonisitas atau overconfident")
@@ -412,11 +416,11 @@ def main():
     rmse_o_test = rmse_ordinal(y_test, y_pred_test)
     biaya_test = biaya_berbobot(y_test, y_pred_test)
 
-    print(f"\n  Accuracy  : {acc_test:.4f}")
-    print(f"  F1-Macro  : {f1_test:.4f}")
-    print(f"  Precision : {prec_test:.4f}")
-    print(f"  Recall    : {rec_test:.4f}")
-    print(f"  RMSE Ord. : {rmse_o_test:.4f}")
+    print(f"\n  Accuracy  : {acc_test*100:.2f}%")
+    print(f"  F1-Macro  : {f1_test*100:.2f}%")
+    print(f"  Precision : {prec_test*100:.2f}%")
+    print(f"  Recall    : {rec_test*100:.2f}%")
+    print(f"  RMSE Ord. : {rmse_o_test:.4f}  (skala 0-2, bukan persen)")
     print(f"  Biaya Avg : {biaya_test:.4f}")
     print(f"\n{classification_report(y_test, y_pred_test, labels=LABEL_ORDER)}")
 
@@ -439,9 +443,9 @@ def main():
 
     selisih_acc = acc_test - acc_abl
     selisih_f1 = f1_test - f1_abl
-    print(f"  Dengan deviasi_persen   : Acc {acc_test:.4f} | F1 {f1_test:.4f}")
-    print(f"  Tanpa deviasi_persen    : Acc {acc_abl:.4f} | F1 {f1_abl:.4f}")
-    print(f"  Selisih Acc: {selisih_acc:+.4f} | Selisih F1: {selisih_f1:+.4f}")
+    print(f"  Dengan deviasi_persen   : Acc {acc_test*100:.2f}% | F1 {f1_test*100:.2f}%")
+    print(f"  Tanpa deviasi_persen    : Acc {acc_abl*100:.2f}% | F1 {f1_abl*100:.2f}%")
+    print(f"  Selisih Acc: {selisih_acc*100:+.2f}% | Selisih F1: {selisih_f1*100:+.2f}%")
     if selisih_acc > 0.15:
         print("  -> Penurunan besar: performa didominasi deviasi_persen (sirkularitas).")
     else:
@@ -521,6 +525,8 @@ def main():
         "f1_macro_cv_std": round(float(best_row['F1_Val_Std']), 4),
         "f1_macro_test": round(f1_test, 4),
         "accuracy_test": round(acc_test, 4),
+        "f1_macro_test_persen": round(f1_test * 100, 2),
+        "accuracy_test_persen": round(acc_test * 100, 2),
         "rmse_ordinal_test": round(rmse_o_test, 4),
         "ablation_akurasi_dengan_deviasi": round(acc_test, 4),
         "ablation_akurasi_tanpa_deviasi": round(acc_abl, 4),

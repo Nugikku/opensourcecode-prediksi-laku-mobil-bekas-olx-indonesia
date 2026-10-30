@@ -42,7 +42,7 @@
   "r2_harga_wajar": 0.7726,
   "train_size": 1859,
   "test_size": 465,
-  "tanggal_label": "2026-10-27",
+  "tanggal_label": "2026-10-30",
   "model_klasifikasi": "Random Forest",
   "fitur_klasifikasi": [
     "merek",
@@ -81,6 +81,8 @@
   "f1_macro_cv_std": 0.0046,
   "f1_macro_test": 0.9872,
   "accuracy_test": 0.9871,
+  "f1_macro_test_persen": 98.72,
+  "accuracy_test_persen": 98.71,
   "rmse_ordinal_test": 0.1136,
   "ablation_akurasi_dengan_deviasi": 0.9871,
   "ablation_akurasi_tanpa_deviasi": 0.514,
@@ -88,5 +90,5 @@
   "ablation_f1_dengan_deviasi": 0.9872,
   "ablation_f1_tanpa_deviasi": 0.5076,
   "catatan": "Label status_likuiditas dibentuk dari deviasi_persen, yang juga dipakai sbg fitur classifier \u2014 akurasi tinggi sebagian bersifat sirkular, lihat ablation_*.",
-  "tanggal_latih": "2026-10-27"
+  "tanggal_latih": "2026-10-30"
 }

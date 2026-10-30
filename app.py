@@ -40,9 +40,9 @@ with st.sidebar:
     if 'mape_harga_wajar_pct' in meta:
         st.markdown(f"**MAPE Harga Wajar:** `{meta['mape_harga_wajar_pct']}%`")
     if 'f1_macro_test' in meta:
-        st.markdown(f"**F1-Score Test:** `{meta['f1_macro_test']:.4f}`")
+        st.markdown(f"**F1-Score Test:** `{meta['f1_macro_test']*100:.2f}%`")
     if 'accuracy_test' in meta:
-        st.markdown(f"**Akurasi Test:** `{meta['accuracy_test']:.4f}`")
+        st.markdown(f"**Akurasi Test:** `{meta['accuracy_test']*100:.2f}%`")
     if 'q33' in meta and 'q67' in meta:
         st.markdown(f"**Ambang Tertile (Hanya dari Train):**  \n- Cepat: $\\le {meta['q33']:.2f}\\%$  \n- Sedang: ${meta['q33']:.2f}\\%$ s/d ${meta['q67']:.2f}\\%$  \n- Lambat: $> {meta['q67']:.2f}\\%$")
     st.markdown("---")
