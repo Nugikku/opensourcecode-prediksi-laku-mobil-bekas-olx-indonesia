@@ -1,6 +1,6 @@
 {
-  "q33": -6.96125315274974,
-  "q67": 7.302462389985869,
+  "q33": -7.269471468138376,
+  "q67": 6.513098496711899,
   "label_order": [
     "Cepat",
     "Sedang",
@@ -34,15 +34,15 @@
     "km_per_tahun"
   ],
   "ambang_sampel": 15,
-  "model_regresi": "Ridge (alpha=1.0)",
-  "mape_harga_wajar_pct": 18.77,
-  "mae_harga_wajar_rupiah": 77169347.0,
-  "mse_harga_wajar": 3.624991433290893e+16,
-  "rmse_harga_wajar_rupiah": 190394103.0,
-  "r2_harga_wajar": 0.7726,
-  "train_size": 1859,
-  "test_size": 465,
-  "tanggal_label": "2026-10-30",
+  "model_regresi": "Linear Regression",
+  "mape_harga_wajar_pct": 20.1,
+  "mae_harga_wajar_rupiah": 71303921.0,
+  "mse_harga_wajar": 3.2770980891219384e+16,
+  "rmse_harga_wajar_rupiah": 181027569.0,
+  "r2_harga_wajar": 0.7735,
+  "train_size": 2113,
+  "test_size": 529,
+  "tanggal_label": "2026-11-02",
   "model_klasifikasi": "Random Forest",
   "fitur_klasifikasi": [
     "merek",
@@ -59,36 +59,36 @@
   ],
   "fitur_dibuang_klasifikasi": {
     "tipe_penjual": "konstan (hanya satu nilai, tidak membawa informasi)",
-    "usia_mobil": "redundan dengan tahun (r=0.9995)"
+    "usia_mobil": "redundan dengan tahun (r=0.9996)"
   },
   "tuning": {
     "dilakukan": true,
     "metode": "RandomizedSearchCV n_iter=8, inner CV=3, outer CV=5",
     "parameter_terbaik": {
-      "clf__n_estimators": 300,
-      "clf__min_samples_leaf": 2,
+      "clf__n_estimators": 200,
+      "clf__min_samples_leaf": 1,
       "clf__max_features": 0.5,
-      "clf__max_depth": 16
+      "clf__max_depth": 12
     },
-    "f1_nested_mean": 0.9957,
-    "f1_nested_std": 0.0036,
-    "f1_default_cv": 0.9941,
+    "f1_nested_mean": 0.9976,
+    "f1_nested_std": 0.0015,
+    "f1_default_cv": 0.9873,
     "dipakai": false,
-    "alasan": "selisih dengan default tidak bermakna (< 1 std)"
+    "alasan": "ditolak: melanggar monotonisitas atau overconfident"
   },
-  "rerata_keyakinan_puncak": 0.7213,
-  "f1_macro_cv": 0.9941,
-  "f1_macro_cv_std": 0.0046,
-  "f1_macro_test": 0.9872,
-  "accuracy_test": 0.9871,
-  "f1_macro_test_persen": 98.72,
-  "accuracy_test_persen": 98.71,
-  "rmse_ordinal_test": 0.1136,
-  "ablation_akurasi_dengan_deviasi": 0.9871,
-  "ablation_akurasi_tanpa_deviasi": 0.514,
-  "ablation_selisih_akurasi": 0.4731,
-  "ablation_f1_dengan_deviasi": 0.9872,
-  "ablation_f1_tanpa_deviasi": 0.5076,
+  "rerata_keyakinan_puncak": 0.6066,
+  "f1_macro_cv": 0.9873,
+  "f1_macro_cv_std": 0.0064,
+  "f1_macro_test": 0.984,
+  "accuracy_test": 0.9849,
+  "f1_macro_test_persen": 98.4,
+  "accuracy_test_persen": 98.49,
+  "rmse_ordinal_test": 0.123,
+  "ablation_akurasi_dengan_deviasi": 0.9849,
+  "ablation_akurasi_tanpa_deviasi": 0.4291,
+  "ablation_selisih_akurasi": 0.5558,
+  "ablation_f1_dengan_deviasi": 0.984,
+  "ablation_f1_tanpa_deviasi": 0.4187,
   "catatan": "Label status_likuiditas dibentuk dari deviasi_persen, yang juga dipakai sbg fitur classifier \u2014 akurasi tinggi sebagian bersifat sirkular, lihat ablation_*.",
-  "tanggal_latih": "2026-10-30"
+  "tanggal_latih": "2026-11-02"
 }

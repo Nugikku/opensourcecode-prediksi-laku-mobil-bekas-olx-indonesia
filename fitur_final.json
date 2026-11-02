@@ -13,6 +13,6 @@
   ],
   "dibuang": {
     "tipe_penjual": "konstan (hanya satu nilai, tidak membawa informasi)",
-    "usia_mobil": "redundan dengan tahun (r=0.9995)"
+    "usia_mobil": "redundan dengan tahun (r=0.9996)"
   }
 }
