@@ -178,10 +178,15 @@ def _():
 
 @tes("Vonis selalu konsisten dengan peluang tertinggi (tanpa aturan ganda di luar model)")
 def _():
-    kasus = [("Toyota", "Avanza", 2024, "manual", 80000, "50jt", "tanpa garansi tidak ada garansi"),
-             ("Toyota", "Avanza", 2018, "manual", 60000, "150jt", "service record resmi"),
-             ("Honda", "Brio", 2020, "automatic", 40000, "180jt", ""),
-             ("Toyota", "Innova", 2016, "automatic", 120000, "400jt", "bekas banjir")]
+    # Kasus diambil dari DATA (bukan nama model yang ditulis manual), supaya tes tetap valid
+    # saat penamaan model berubah antar-batch (mis. "Innova" menjadi "Kijang Innova").
+    g = df.groupby(['merek', 'model']).size().sort_values(ascending=False)
+    kasus = []
+    for (merek, model), _n in g.head(4).items():
+        r = df[(df.merek == merek) & (df.model == model)].iloc[0]
+        kasus.append((merek, model, int(r.tahun), r.transmisi, int(r.jarak_tempuh), int(r.harga), ""))
+    m0, mo0 = g.index[0]
+    kasus.append((m0, mo0, 2024, "manual", 80000, "50jt", "tanpa garansi tidak ada garansi"))
     for merek, model, tahun, trans, km, harga, desk in kasus:
         h = prediksi(sistem, merek, model, tahun, trans, km, harga, desk)
         assert h['proba'] is not None

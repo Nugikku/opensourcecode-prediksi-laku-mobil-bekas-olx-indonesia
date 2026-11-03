@@ -8,27 +8,25 @@ Tugas Data Mining – Kelas TI24A2 | Universitas Duta Bangsa Surakarta
 
 ## Deskripsi
 
-AutoLaku membantu penjual perorangan mobil bekas di OLX memperkirakan apakah rencana harga jual mereka akan membuat unit **Cepat**, **Sedang**, atau **Lambat** laku — sebelum iklan dipasang.
+AutoLaku membantu penjual perorangan mobil bekas di OLX memperkirakan apakah rencana harga jual membuat unit **Cepat**, **Sedang**, atau **Lambat** laku, sebelum iklan dipasang.
 
-Sistem mengambil data iklan dari OLX, menghitung harga wajar pasar, lalu mengklasifikasikan kecepatan laku berdasarkan selisih harga, jarak tempuh, dan isi deskripsi iklan.
+Sistem menghitung harga wajar dari data iklan OLX, mengukur seberapa jauh rencana harga dari harga wajar itu, lalu mengklasifikasikan kecepatan laku bersama jarak tempuh dan isi deskripsi iklan.
 
-> **Catatan metodologi:** Label Cepat/Sedang/Lambat bersifat *label proxy* — dibentuk dari deviasi harga iklan terhadap harga wajar, bukan dari data status terjual sesungguhnya (OLX tidak menyediakan data ini). Lihat bagian [Keterbatasan](#keterbatasan) untuk penjelasan lengkap.
+> **Catatan metodologi:** Label Cepat/Sedang/Lambat adalah *label proxy*. OLX tidak menyediakan data status terjual, sehingga label dibentuk dari deviasi harga iklan terhadap harga wajar. Dasar ilmiahnya ada di bagian [Landasan Ilmiah Pelabelan](#landasan-ilmiah-pelabelan), keterbatasannya di bagian [Keterbatasan](#keterbatasan).
 
 ---
 
 ## Alur Pipeline
 
 ```
-scraping.py              → dataset_olx_mentah.csv       (3.000 baris)
-processing.py            → dataset_olx_bersih.csv       (2.334 baris setelah pembersihan)
-pelabelan.py             → dataset_olx_berlabel.csv     (split train/test + label proxy)
-analisis_fitur.py        → fitur_final.json             (feature selection)
+scraping.py                → dataset_olx_mentah.csv
+processing.py              → dataset_olx_bersih.csv
+pelabelan.py               → dataset_olx_berlabel.csv   (split train/test + label proxy)
+analisis_fitur.py          → fitur_final.json           (feature selection)
 train_model_klasifikasi.py → model_*.pkl + autolaku_meta.json
-test_sistem.py           → 21 tes otomatis
+test_sistem.py             → 21 tes otomatis
 app.py / test_prediksi_klasifikasi.py → antarmuka pengguna
 ```
-
----
 
 ## Struktur File
 
@@ -36,206 +34,247 @@ app.py / test_prediksi_klasifikasi.py → antarmuka pengguna
 |---|---|
 | `scraping.py` | Scraping iklan mobil bekas dari OLX |
 | `kamus_slang_otomotif.py` | Kamus normalisasi istilah otomotif |
-| `processing.py` | Pembersihan data mentah → `dataset_olx_bersih.csv` |
+| `processing.py` | Pembersihan data mentah |
 | `pelabelan.py` | Split train/test, model harga wajar, label proxy |
 | `analisis_fitur.py` | Feature selection → `fitur_final.json` |
-| `model_khusus.py` | Implementasi Naive Bayes Diskretisasi (P9) |
-| `train_model_klasifikasi.py` | Perbandingan, tuning, evaluasi model klasifikasi |
+| `model_khusus.py` | Naive Bayes dengan diskretisasi fitur numerik |
+| `train_model_klasifikasi.py` | Perbandingan, tuning, dan evaluasi model klasifikasi |
+| `tambah_data.py` | Menambah data latih baru lalu melatih ulang otomatis (dengan arsip dan pemulihan) |
 | `mesin_prediksi.py` | Engine prediksi (dipakai CLI, tes, dan Streamlit) |
 | `test_prediksi_klasifikasi.py` | Antarmuka terminal untuk penjual |
 | `test_sistem.py` | 21 tes otomatis |
 | `app.py` | Antarmuka Streamlit |
 
-**File yang dihasilkan otomatis:**
-`dataset_olx_bersih.csv`, `dataset_olx_berlabel.csv`, `fitur_final.json`,
-`model_regresi_harga.pkl`, `model_klasifikasi_likuiditas.pkl`, `autolaku_meta.json`,
-`keputusan_fitur.csv`, `laporan_preprocessing.txt`
+File yang dihasilkan otomatis: `dataset_olx_bersih.csv`, `dataset_olx_berlabel.csv`, `fitur_final.json`, `model_regresi_harga.pkl`, `model_klasifikasi_likuiditas.pkl`, `autolaku_meta.json`, `keputusan_fitur.csv`, `laporan_preprocessing.txt`.
 
 ---
 
 ## Cara Menjalankan
 
-### 1. Persyaratan
-
 ```bash
 pip install pandas numpy scikit-learn matplotlib streamlit
-```
 
-### 2. Urutan eksekusi
-
-```bash
-# Mulai dari data mentah:
 python processing.py
 python pelabelan.py
 python analisis_fitur.py
-python train_model_klasifikasi.py
-python test_sistem.py             # harus 21/21 lulus
+python train_model_klasifikasi.py     # beberapa menit (nested CV)
+python test_sistem.py                 # target: 21/21 lulus
 
-# Antarmuka:
-streamlit run app.py              # antarmuka web
-python test_prediksi_klasifikasi.py  # antarmuka terminal
+streamlit run app.py                  # antarmuka web
+python test_prediksi_klasifikasi.py   # antarmuka terminal
 ```
 
-> **Penting:** Hapus `.pkl` dan `autolaku_meta.json` lama sebelum menjalankan ulang dari awal. Jangan lewati `analisis_fitur.py` — hasil `fitur_final.json`-nya dibaca oleh `train_model_klasifikasi.py`.
+> Hapus `.pkl` dan `autolaku_meta.json` lama sebelum menjalankan ulang dari awal. Jangan lewati `analisis_fitur.py`, karena `train_model_klasifikasi.py` membaca `fitur_final.json`.
+> Jika menggabungkan beberapa batch scraping, gabungkan CSV mentah lebih dulu. `processing.py` membuang iklan ganda lewat `id_iklan`.
 
-### 3. Jika hanya ingin menjalankan aplikasi (tanpa training ulang)
+---
 
-Pastikan semua file `.pkl`, `autolaku_meta.json`, `dataset_olx_berlabel.csv`, dan `fitur_final.json` sudah tersedia di folder yang sama, lalu:
+## Menambah Data Latih Baru
+
+Sistem bisa menerima data latih baru kapan saja. Model scikit-learn tidak belajar bertahap, jadi data baru digabung ke dataset lama lalu seluruh pipeline dijalankan ulang.
+
+**Lewat terminal:**
 
 ```bash
-streamlit run app.py
+python tambah_data.py hasil_scraping_baru.csv
+python tambah_data.py hasil_scraping_baru.csv --tanpa-latih   # hanya gabung data
+python tambah_data.py hasil_scraping_baru.csv --paksa         # tetap simpan walau tes gagal
 ```
 
----
+**Lewat aplikasi:** buka sidebar `streamlit run app.py`, pilih **Admin: Tambah Data Latih**, unggah CSV, lalu klik *Tambahkan & latih ulang*.
 
-## Data
+Yang dilakukan sistem:
+1. Memeriksa kolom CSV baru (harus sama dengan `dataset_olx_mentah.csv`) dan membuang iklan yang `id_iklan`-nya sudah ada
+2. Mengarsipkan data dan model lama di folder `arsip/<waktu>/`
+3. Menjalankan `processing.py`, `pelabelan.py`, `analisis_fitur.py`, `train_model_klasifikasi.py`, lalu `test_sistem.py`
+4. Jika ada tahap yang gagal, semua file dikembalikan otomatis dari arsip
+5. Mencatat riwayat (jumlah data, F1, akurasi) di `riwayat_data.json` dan menampilkan perbandingan sebelum dan sesudah
 
-- **Sumber:** Scraping mandiri dari [OLX Indonesia](https://www.olx.co.id/mobil-bekas_c198)
-- **Data mentah:** 3.000 baris, 13 atribut
-- **Data bersih:** 2.334 baris setelah 12 tahap preprocessing
-- **Split:** 1.859 data training (80%) | 465 data test (20%), stratifikasi per kuartil harga
-
-### Tahap preprocessing utama (P3-4)
-
-| Tahap | Hasil |
-|---|---|
-| Ekstraksi tahun, transmisi, model dari judul | Menutup nilai kosong efektif di kolom mentah |
-| Standardisasi merek (51 → 42 varian) | Penulisan tidak konsisten diseragamkan |
-| Pembersihan harga (filter boneka, luar rentang) | 3.000 → 2.660 baris |
-| Deteksi noise berbasis aturan domain (km) | 10 baris ditandai & dikeluarkan dari model |
-| Deteksi outlier IQR log-harga per merek | 74 baris **ditandai** (tidak dibuang — mobil mewah bisa valid) |
-| Fitur teks diperluas dengan penanganan negasi | `ada_garansi`, `riwayat_negatif`, `catatan_servis`, `pajak_hidup` |
-| Hapus duplikat | 2.638 → 2.334 baris |
-| Penanda transmisi asumsi | 1.021 baris (34%) tidak menyebut transmisi di iklan, diisi 'automatic' dan ditandai |
+Catatan: penamaan model antar-batch belum diseragamkan otomatis (contoh `Innova` dan `Kijang Innova`), dan motor atau truk yang ikut terscraping belum difilter. Periksa `laporan_preprocessing.txt` setelah menambah data. Tambahkan `arsip/` ke `.gitignore`.
 
 ---
 
-## Feature Selection (P3-4)
+## Hasil per Batch Data
 
-Dilakukan di `analisis_fitur.py` sebelum training. Hasilnya tersimpan di `fitur_final.json` dan dibaca otomatis oleh `train_model_klasifikasi.py`.
+Pipeline dijalankan pada dua batch hasil scraping. **Batch 1** adalah data awal (3.000 baris mentah). **Batch 2** adalah hasil scraping ulang. Angka di bawah dihitung dari `dataset_olx_bersih.csv` dan `dataset_olx_berlabel.csv` masing-masing batch, pada data test.
 
-| Metode | Fitur paling berpengaruh |
+### Ukuran data dan pelabelan
+
+| Aspek | Batch 1 | Batch 2 |
+|---|---|---|
+| Data mentah | 3.000 baris | lihat `laporan_preprocessing.txt` |
+| Data bersih | 2.334 | 2.643 |
+| Noise km ditandai | 10 | 1 |
+| Data berlabel | 2.324 | 2.642 |
+| Train / Test | 1.859 / 465 | 2.113 / 529 |
+| Merek unik | 42 | 56 |
+| Model unik | 151 | 396 |
+| Baris bermodel "Lainnya" | 15,2% | 0% |
+| Kombinasi dengan sampel < 15 | 61,6% | 66,9% |
+| Transmisi hanya asumsi | 31,1% | 35,4% |
+| Harga median | Rp 220 jt | Rp 210 jt |
+| Ambang Q33 / Q67 (dari train) | −6,96% / +7,30% | −7,27% / +6,51% |
+
+Ambang tertile hampir sama di kedua batch (sekitar ±7%), jadi batas Cepat/Sedang/Lambat relatif stabil terhadap penambahan data.
+
+### Distribusi label proxy (%)
+
+| Data | Cepat | Sedang | Lambat |
+|---|---|---|---|
+| Batch 1 – train | 32,8 | 34,2 | 33,0 |
+| Batch 1 – test | 34,0 | 34,2 | 31,8 |
+| Batch 2 – train | 32,7 | 34,3 | 33,0 |
+| Batch 2 – test | 28,9 | 33,8 | 37,2 |
+
+Distribusi test tidak sama dengan 33/33/33 karena ambang dihitung hanya dari train. Pada batch 2, test condong ke Lambat (37,2%). Ini yang terjadi jika ambang tidak ikut dilihat oleh data test.
+
+### Model harga wajar (data test)
+
+| Metrik | Batch 1 | Batch 2 |
+|---|---|---|
+| MAPE (model saja) | 19,80% | 18,48% |
+| R² (model saja) | 0,7420 | 0,8462 |
+| MAPE (model + fallback usia) | 18,43% | 18,16% |
+| R² (model + fallback usia) | 0,7587 | 0,7896 |
+| MAE (model + fallback usia) | Rp 76,5 jt | Rp 66,7 jt |
+| Harga wajar dari model ML | 35,8% | 36,6% |
+| Harga wajar dari fallback regresi usia (merek) | 8,2% | 17,9% |
+
+Data yang lebih banyak memperbaiki model harga wajar. Pada batch 2, fallback usia menurunkan MAPE sedikit tetapi **menurunkan R²** (0,846 menjadi 0,790), sehingga ambang fallback perlu dievaluasi ulang.
+
+### Hasil klasifikasi
+
+| Metrik | Batch 1 | Batch 2 |
+|---|---|---|
+| Model terpilih | Random Forest | menyusul setelah training |
+| F1-macro CV (5-fold) | 99,41% ± 0,46% | menyusul |
+| F1-macro test | 98,72% | menyusul |
+| Akurasi test | 98,71% | menyusul |
+| Akurasi tanpa `deviasi_persen` (ablation) | 51,40% | menyusul |
+
+Hasil training batch 2 belum dilampirkan. Jalankan `train_model_klasifikasi.py` lalu isi kolom ini.
+
+### Tes otomatis
+
+| | Batch 1 | Batch 2 |
+|---|---|---|
+| Hasil | 21/21 lulus | 20/21 sebelum perbaikan |
+
+Satu tes gagal pada batch 2 karena kombinasi `Toyota Innova` tidak ditemukan. Penamaan model berubah antar-batch (batch 1: `Innova`, batch 2: `Kijang Innova`), sedangkan tes menulis nama model secara manual. Ini bukan bug sistem. Tes sekarang mengambil kasus dari data sehingga tidak bergantung pada nama model tertentu.
+
+### Temuan pada data batch 2 yang perlu ditangani
+
+1. **Model terlalu rinci.** Kolom `model` kini terisi penuh (nama seperti `218I`, `318I`, `A140`, `A200`), sehingga 285 dari 396 model hanya punya kurang dari 5 baris. Akibatnya sampel per kombinasi menipis dan lebih banyak harga wajar jatuh ke fallback tingkat merek.
+2. **Kendaraan non-mobil ikut terscraping.** Ada 30 baris (1,1%) motor, truk, dan van: Yamaha, Kawasaki, KTM, Ducati, Harley Davidson, Piaggio, Aprilia, Hino, Maxus, dan "Truk". Perlu difilter berdasarkan daftar merek mobil.
+3. **Standardisasi merek belum tuntas.** `Dfsk` dan `Dfsk (Dongfeng Sokon)` masih terpisah.
+4. **Batch 2 bukan scraping ulang yang lengkap.** Hanya 185 `id_iklan` yang sama dengan batch 1. Karena itu iklan yang "hilang" di batch 2 tidak bisa dianggap sudah terjual.
+
+---
+
+## Data dan Preprocessing
+
+- **Sumber:** scraping mandiri dari [OLX Indonesia](https://www.olx.co.id/mobil-bekas_c198)
+- **Alur batch 1:** 3.000 mentah → 2.334 bersih → 2.324 berlabel (10 baris noise km dikeluarkan di `pelabelan.py`) → 1.859 train / 465 test (80/20, stratifikasi per kuartil harga)
+
+| Tahap | Keterangan |
 |---|---|
-| Korelasi (filter) | `deviasi_persen`, `tahun`, `km_per_tahun`, `jarak_tempuh` |
-| Mutual information | `deviasi_persen`, `merek`, `model`, `tahun` |
-| Random Forest importance (embedded) | `deviasi_persen` dominan; `tahun`, `km_per_tahun` berikutnya |
+| Ekstraksi tahun, transmisi, model dari judul | Kolom mentah tahun/transmisi kosong efektif |
+| Standardisasi merek | Penulisan tidak konsisten diseragamkan |
+| Filter harga (boneka, di luar Rp 25 jt–3 miliar) dan tahun (1995–2026) | Data tidak wajar dibuang |
+| Deteksi noise berbasis aturan domain (km) | Ditandai, lalu dikeluarkan saat pelabelan |
+| Deteksi outlier IQR pada log-harga per merek | Hanya ditandai, tidak dibuang (mobil mewah bisa valid) |
+| Fitur teks dengan penanganan negasi | `ada_garansi`, `riwayat_negatif`, `catatan_servis`, `pajak_hidup` |
+| Hapus duplikat (batch 1: 304 baris) | Sebagian besar iklan yang dipasang ulang (66% judul identik, 83% lokasi sama) |
+| Penanda transmisi asumsi | Iklan tanpa info transmisi diisi `automatic` dan ditandai `transmisi_dari_teks=0` |
 
-**Fitur dibuang:**
-- `tipe_penjual` — konstan (seluruh data penjual individu)
-- `usia_mobil` — redundan dengan `tahun` (r = 0,9995)
+---
 
-**Fitur final yang dipakai model klasifikasi (11 fitur):**
-`merek`, `model`, `transmisi`, `ada_garansi`, `riwayat_negatif`, `catatan_servis`, `pajak_hidup`, `tahun`, `jarak_tempuh`, `km_per_tahun`, `deviasi_persen`
+## Feature Selection
+
+Dilakukan di `analisis_fitur.py`, hanya pada data train. Hasilnya di `fitur_final.json` dan dibaca otomatis oleh training.
+
+- **Dibuang:** `tipe_penjual` (konstan, seluruhnya penjual individu) dan `usia_mobil` (redundan dengan `tahun`, r = 0,9995)
+- **Dipakai (11 fitur):** `merek`, `model`, `transmisi`, `ada_garansi`, `riwayat_negatif`, `catatan_servis`, `pajak_hidup`, `tahun`, `jarak_tempuh`, `km_per_tahun`, `deviasi_persen`
+- **Temuan (batch 1):** `deviasi_persen` sangat dominan (importance Random Forest 64,79%). Fitur lain hampir tidak berpengaruh pada permutation importance.
 
 ---
 
 ## Model
 
-### Harga Wajar (P5)
+### Harga wajar
 
-Model regresi untuk menghitung harga wajar tiap unit, sebelum deviasi dihitung.
+Ridge Regression, target log(harga), dipilih dengan MAPE terendah pada 5-fold CV data train. Kandidat: Linear, Ridge, Random Forest, Gradient Boosting. Kombinasi dengan sampel kurang dari 15 memakai fallback regresi usia per model atau per merek.
 
-| Aspek | Detail |
-|---|---|
-| Model terpilih | **Ridge Regression** (alpha=1.0) |
-| Kriteria pilih | MAPE terendah pada 5-fold CV data training |
-| Target | log(harga) → dikembalikan ke Rupiah |
-| MAPE | **18,77%** |
-| R² | **0,7726** |
-| RMSE | Rp 190,4 juta |
-| Kandidat dibandingkan | Linear Regression, Ridge, Random Forest, Gradient Boosting |
-
-Untuk kombinasi merek/model/usia dengan data sedikit (< 15 sampel), dipakai fallback regresi usia per model atau per merek.
-
-### Klasifikasi Likuiditas (P6, P9, P12, P13)
-
-| Aspek | Detail |
-|---|---|
-| Model terpilih | **Random Forest** |
-| Kriteria pilih | F1-macro CV tertinggi di antara model yang lolos: monoton terhadap harga, tidak overconfident (keyakinan ≤ 0,97), selisih train–validasi < 10% |
-| F1-macro CV | **0,9941 ± 0,0046** (5-fold Stratified) |
-| F1-macro test | **0,9872** |
-| Akurasi test | **0,9871** |
-| RMSE ordinal test | **0,1136** |
-| Rerata keyakinan puncak | **0,7213** |
-
-**Kandidat yang dibandingkan (Skenario 2, dengan `deviasi_persen`):**
+### Klasifikasi (hasil final batch 1)
 
 | Model | F1 CV | Std | F1 Train | Keputusan |
 |---|---|---|---|---|
-| Logistic Regression | 0,9384 | 0,0154 | 0,9729 | OK |
-| KNN (K=5) | 0,6159 | 0,0115 | 0,7693 | Ditolak: overfitting |
-| Naive Bayes (Bernoulli) | 0,8762 | 0,0085 | 0,8928 | OK |
-| Decision Tree | 0,9979 | 0,0020 | 1,0000 | Ditolak: overconfident |
-| **Random Forest** | **0,9941** | 0,0046 | 1,0000 | **Terpilih** |
-| Gradient Boosting | 0,9979 | 0,0020 | 1,0000 | Ditolak: overconfident |
+| Logistic Regression | 93,84% | 1,54% | 97,29% | OK |
+| KNN (K=5) | 61,59% | 1,15% | 76,93% | Ditolak: overfitting |
+| Naive Bayes (Bernoulli, diskretisasi) | 87,62% | 0,85% | 89,28% | OK |
+| Decision Tree | 99,79% | 0,20% | 100% | Ditolak: overconfident |
+| **Random Forest** | **99,41%** | 0,46% | 100% | **Terpilih** |
+| Gradient Boosting | 99,79% | 0,20% | 100% | Ditolak: overconfident |
 
-**Tuning Hyperparameter + Nested CV (P13):**
-RandomizedSearchCV (n_iter=8, inner CV=3) pada model terpilih. F1 nested CV = 0,9957 ± 0,0036. Selisih dengan default (0,9941) tidak melebihi satu standar deviasi → **parameter default dipertahankan**.
+Kriteria pilih: F1-macro CV tertinggi di antara model yang monoton terhadap harga, tidak overconfident (keyakinan ≤ 0,97), dan tanpa overfitting berlebih. **Tuning:** RandomizedSearchCV dengan nested CV memberi F1 99,57% ± 0,36%. Selisih dengan parameter default tidak melebihi satu standar deviasi, sehingga parameter default dipertahankan.
 
-**Label Proxy:**
+**Label proxy:** Cepat jika deviasi ≤ Q33, Sedang jika di antara Q33 dan Q67, Lambat jika di atas Q67. Ambang hanya dari data train.
 
-| Label | Kondisi |
-|---|---|
-| Cepat | Deviasi harga ≤ −6,96% (Q33 dari data training) |
-| Sedang | −6,96% < deviasi ≤ 7,30% (Q33–Q67) |
-| Lambat | Deviasi harga > 7,30% (Q67 dari data training) |
-
-Ambang hanya dihitung dari data **training** untuk menghindari data leakage (P12).
-
-### Uji Ablation
-
-| Skenario | Akurasi | Keterangan |
-|---|---|---|
-| Dengan `deviasi_persen` | **0,9871** | Model yang dipakai aplikasi |
-| Tanpa `deviasi_persen` | **0,5140** | Mendekati tebakan acak (1/3) |
-
-Akurasi tinggi sebagian bersifat sirkular — classifier mempelajari ulang aturan yang membentuk labelnya sendiri. Skenario 1 (tanpa deviasi) adalah perbandingan algoritma yang lebih adil.
-
----
-
-## Evaluasi Model (P12)
-
-- **Split data:** train/test dipisah **sebelum** label dibuat dan sebelum ambang tertile dihitung
-- **Preprocessing dalam pipeline CV:** StandardScaler dan OneHotEncoder hanya di-fit dari data training di tiap fold
-- **Test set dibuka sekali:** hanya untuk evaluasi akhir, tidak dipakai memilih model atau parameter
-- **Cek overfitting:** selisih F1 training vs validasi dilaporkan untuk setiap kandidat
-- **Tes otomatis:** 21 tes, termasuk uji monotonisitas, kebocoran data, konsistensi fitur, dan fitur teks baru
-
----
-
-## Keterbatasan
-
-1. **Label proxy** — OLX tidak menyediakan data status terjual; label dibentuk dari deviasi harga
-2. **Akurasi tinggi sebagian sirkular** — lihat uji ablation; akurasi tanpa `deviasi_persen` hanya 51%
-3. **Data snapshot** — bukan real-time; harga pasar bisa berubah
-4. **Transmisi 34% asumsi** — iklan yang tidak menyebut transmisi diisi 'automatic' (ditandai `transmisi_dari_teks=0`)
-5. **Validasi umur iklan tidak reliabel** — `tanggal_posting` kemungkinan tanggal dibuat, bukan diperbarui
-6. **Fokus penjual saja** — tidak ada mode pembeli
+**Uji ablation:** tanpa `deviasi_persen`, akurasi turun dari 98,71% ke 51,40%, mendekati tebakan acak. Classifier sebagian besar mempelajari ulang aturan yang membentuk labelnya.
 
 ---
 
 ## Landasan Ilmiah Pelabelan
 
-Label proxy kecepatan laku dibentuk dari deviasi harga iklan terhadap harga wajar, bukan dari asumsi semata. Pendekatan ini dilandasi temuan empiris berikut:
+Label dibuat otomatis lewat kode, jadi setiap langkahnya perlu rujukan. Lima rujukan di bawah sudah dibaca isinya. Tiap rujukan dipakai untuk satu pertanyaan saja.
 
-**Referensi utama (marketplace otomotif online):**
+| Langkah di `pelabelan.py` | Rujukan | Alasan jadi patokan | Batasan |
+|---|---|---|---|
+| Deviasi harga mewakili kecepatan laku | **Granát & Vékás (2025)** | Pada marketplace mobil bekas, rasio harga iklan terhadap harga prediksi ML adalah prediktor kuat durasi iklan. Alurnya sama dengan AutoLaku, dan mereka menyebut alur ini bisa dipasang di marketplace untuk memberi tahu penjual perkiraan waktu jual. | Naskah, status terbit belum terverifikasi. Durasi = iklan menghilang (proksi penjualan). Data Hungaria. |
+| Deviasi harga mewakili kecepatan laku | **Born dkk. (2018)** | Variabel DOP (harga ÷ harga hedonik log-linear) terbukti: makin tinggi DOP, makin lama mobil tidak terjual. Memakai data penjualan nyata. | *Working paper*. Data dealer Jerman. |
+| Harga wajar dari regresi karakteristik | **Rosen (1974)** | Dasar teori harga hedonik: harga produk diregresikan pada karakteristiknya. | Hanya untuk harga wajar, tidak membahas waktu jual. Mengabaikan pasar barang bekas. |
+| Label dibuat otomatis dari aturan | **Ratner dkk. (2017)**, Snorkel | Label dari aturan heuristik (*weak supervision*) adalah praktik yang diakui. | AutoLaku memakai satu aturan dan tidak memodelkan akurasinya, jadi bukan implementasi Snorkel. |
+| Harga di atas pasar memperlambat penjualan | **Anglin dkk. (2003)** | Kenaikan harga listing menaikkan perkiraan waktu di pasar (TOM). Pendukung dari pasar properti. | Objeknya rumah. Baru abstrak yang dibaca. |
 
-> Granát, M. P., & Vékás, P. (2025). *Estimating Liquidity in Online Marketplaces via Machine Learning and Survival Analysis.* Eötvös Loránd University / Corvinus University of Budapest.
-> https://real.mtak.hu/247298/1/epj_survival.pdf
+Ambang −6,96% dan +7,30% (batch 1) adalah persentil ke-33 dan ke-67 data train. Itu keputusan desain, bukan batas yang dinyatakan jurnal. Jurnal hanya mendukung **urutan** hubungannya (makin mahal, makin lama laku). Pada batch 2 ambangnya hampir sama (−7,27% dan +6,51%).
 
-Granát & Vékás (2025) membuktikan secara empiris bahwa **price-to-value ratio** — rasio antara harga iklan dan harga wajar hasil model ML — adalah prediktor terkuat dari durasi listing mobil bekas di marketplace online. Konsep ini identik dengan `deviasi_persen` yang dipakai sistem ini. Perbedaannya hanya pada tahap akhir: mereka menggunakan survival analysis untuk memprediksi durasi listing, sedangkan AutoLaku menyederhanakan output menjadi tiga kategori (Cepat/Sedang/Lambat) agar lebih mudah diinterpretasikan oleh penjual awam.
+### Daftar Pustaka
 
-**Referensi pendukung:**
+- Granát, M. P., & Vékás, P. (2025). *Estimating Liquidity in Online Marketplaces via Machine Learning and Survival Analysis*. Naskah. https://real.mtak.hu/247298/1/epj_survival.pdf
+- Born, A., Kovachka, N., Lessmann, S., & Seow, H.-V. (2018). *Price Management in the Used-Car Market: An Evaluation of Survival Analysis*. IRTG 1792 Discussion Paper No. 2018-065, Humboldt-Universität zu Berlin. https://hdl.handle.net/10419/230775
+- Rosen, S. (1974). Hedonic Prices and Implicit Markets: Product Differentiation in Pure Competition. *Journal of Political Economy*, 82(1), 34–55.
+- Ratner, A., Bach, S. H., Ehrenberg, H., Fries, J., Wu, S., & Ré, C. (2017). Snorkel: Rapid Training Data Creation with Weak Supervision. *Proceedings of the VLDB Endowment*, 11(3), 269–282. https://doi.org/10.14778/3157794.3157797
+- Anglin, P. M., Rutherford, R., & Springer, T. M. (2003). The Trade-off Between the Selling Price of Residential Properties and Time-on-the-Market: The Impact of Price Setting. *Journal of Real Estate Finance and Economics*, 26(1), 95–111. https://doi.org/10.1023/A:1021526332732
 
-> Anglin, P. M., Rutherford, R., & Springer, T. M. (2003). The Trade-off Between the Selling Price of Residential Properties and Time-on-the-Market. *Journal of Real Estate Finance and Economics*, 26(1), 95–111.
+---
 
-> Genesove, D., & Mayer, C. (2001). Loss Aversion and Seller Behavior: Evidence from the Housing Market. *Quarterly Journal of Economics*, 116(4), 1233–1260.
+## Evaluasi Model
 
-Kedua jurnal ini membuktikan hubungan negatif antara deviasi harga listing terhadap nilai wajar dan kecepatan jual — prinsip yang sama berlaku di pasar kendaraan bekas online.
+- Split train/test dilakukan **sebelum** label dibuat dan sebelum ambang tertile dihitung
+- Preprocessing (scaling, one-hot) berada di dalam pipeline CV, di-*fit* hanya dari data train tiap fold
+- Test set dibuka sekali, hanya untuk evaluasi akhir
+- Selisih F1 train dan validasi dilaporkan untuk tiap kandidat
+- Referensi prediksi di aplikasi hanya data train
+- Output metrik klasifikasi tampil dalam persen. RMSE ordinal tetap angka biasa (skala 0–2)
+
+---
+
+## Keterbatasan
+
+1. **Label proxy.** OLX tidak menyediakan status terjual. Rujukan di atas mendukung arah hubungannya, tetapi label belum divalidasi terhadap penjualan nyata.
+2. **Akurasi tinggi sebagian sirkular.** Tanpa `deviasi_persen`, akurasi hanya 51,40%.
+3. **Transmisi 31–35% adalah asumsi** (iklan tidak menyebut transmisi, diisi `automatic`).
+4. **Data jarang per model.** Sekitar 62–67% kombinasi merek+model+usia punya sampel kurang dari 15, sehingga banyak prediksi berkeyakinan rendah.
+5. **Data snapshot.** Bukan real-time. Harga pasar dapat berubah.
+6. **Validasi umur iklan tidak reliabel.** `tanggal_posting` kemungkinan tanggal dibuat, bukan diperbarui.
+7. **Fokus penjual saja.** Tidak ada mode pembeli.
+
+### Rencana validasi label
+
+Cara terbaik memvalidasi label adalah memantau iklan yang sama dari waktu ke waktu dan mencatat kapan iklan menghilang, seperti pada Granát & Vékás (2025) dan Born dkk. (2018). Scraping ulang daftar iklan tidak cukup, karena hanya 185 iklan yang sama antara batch 1 dan batch 2. Yang diperlukan adalah mengunjungi ulang setiap `id_iklan` dan mencatat apakah halamannya masih aktif.
 
 ---
 
 ## Lisensi
 
-Proyek ini dibuat untuk keperluan akademik (Tugas Data Mining, TI24A2). Data bersumber dari scraping publik OLX.
+Proyek akademik (Tugas Data Mining, TI24A2). Data bersumber dari scraping publik OLX.
