@@ -524,7 +524,7 @@ async def api_tambah_data(req: TambahDataRequest):
 @app.post("/api/rollback")
 async def api_rollback(req: RollbackRequest):
     """Memulihkan dataset dan model dari folder arsip tertentu lalu menyegarkan memori server."""
-    berhasil = pulihkan_arsip(req.arsip_path)
+    berhasil = pulihkan_arsip(req.arsip_path, simpan_versi_aktif=True)
     if not berhasil:
         return JSONResponse(
             status_code=400,

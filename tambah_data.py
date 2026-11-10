@@ -568,10 +568,34 @@ def buat_arsip() -> str:
     return folder_arsip
 
 
-def pulihkan_arsip(folder_arsip: str) -> bool:
-    """Mengembalikan seluruh file data & model dari folder arsip."""
+def pulihkan_arsip(folder_arsip: str, simpan_versi_aktif: bool = False) -> bool:
+    """
+    Mengembalikan seluruh file data & model dari folder arsip.
+    Jika simpan_versi_aktif=True (misalnya saat tombol Rollback diklik dari web),
+    versi yang sedang aktif di root diamankan terlebih dahulu ke arsip/ agar bisa dipulihkan kembali.
+    """
     if not os.path.exists(folder_arsip):
         return False
+
+    if simpan_versi_aktif and os.path.exists(META_FILE):
+        meta_skrg = _baca_json_aman(META_FILE)
+        tgl_skrg = str(meta_skrg.get("tanggal_latih", "aktif")).replace(":", "-")
+        if tgl_skrg == "2026-11-02":
+            folder_cadangan = os.path.join(ARSIP_DIR, "batch_2_02_11_2026")
+            if os.path.abspath(folder_arsip) != os.path.abspath(folder_cadangan):
+                os.makedirs(folder_cadangan, exist_ok=True)
+                for fname in FILE_DIARSIPKAN:
+                    if os.path.exists(fname):
+                        shutil.copy2(fname, os.path.join(folder_cadangan, fname))
+        elif tgl_skrg != "2026-10-30":
+            # Untuk batch baru di luar Batch 1 (sudah ada di hasil_sistem_30_10_2026) dan Batch 2
+            folder_cadangan = os.path.join(ARSIP_DIR, f"sebelum_rollback_{tgl_skrg}")
+            if os.path.abspath(folder_arsip) != os.path.abspath(folder_cadangan):
+                os.makedirs(folder_cadangan, exist_ok=True)
+                for fname in FILE_DIARSIPKAN:
+                    if os.path.exists(fname):
+                        shutil.copy2(fname, os.path.join(folder_cadangan, fname))
+
     for fname in FILE_DIARSIPKAN:
         src = os.path.join(folder_arsip, fname)
         if os.path.exists(src):
@@ -582,30 +606,39 @@ def pulihkan_arsip(folder_arsip: str) -> bool:
 def daftar_arsip() -> List[Dict[str, Any]]:
     """Mengembalikan daftar versi model dan arsip yang tersedia di sistem."""
     hasil = []
+    tgl_aktif = ""
 
-    # 1. Masukkan versi aktif saat ini (Batch 2 / root) sebagai versi aktif utama
+    # 1. Masukkan versi aktif saat ini di direktori utama
     if os.path.exists(META_FILE):
         meta_aktif = _baca_json_aman(META_FILE)
+        tgl_aktif = str(meta_aktif.get("tanggal_latih", "2026-11-02"))
         train_s = int(meta_aktif.get("train_size", 2113))
         test_s = int(meta_aktif.get("test_size", 529))
         f1_test = meta_aktif.get("f1_macro_test_persen")
         if f1_test is None:
             f1_test = round(float(meta_aktif.get("f1_macro_test", 0.9840)) * 100, 2)
+        if tgl_aktif == "2026-11-02":
+            ket_aktif = "Batch 2 (02 November 2026) - Model Aktif Saat Ini"
+        elif tgl_aktif == "2026-10-30":
+            ket_aktif = "Batch 1 (30 Oktober 2026) - Model Aktif Saat Ini"
+        else:
+            ket_aktif = f"Model Aktif Saat Ini ({tgl_aktif})"
+
         hasil.append({
-            "id": "batch_2_aktif",
+            "id": "versi_aktif",
             "path": ".",
-            "tanggal": meta_aktif.get("tanggal_latih", "2026-11-02"),
+            "tanggal": tgl_aktif,
             "train_size": train_s,
             "test_size": test_s,
             "model_klasifikasi": meta_aktif.get("model_klasifikasi", "Random Forest"),
             "f1_test_pct": f1_test,
-            "keterangan": "Batch 2 - Model Aktif Saat Ini",
+            "keterangan": ket_aktif,
             "is_aktif": True,
         })
 
-    # 2. Sertakan arsip Batch 1 (30 Oktober 2026)
+    # 2. Sertakan arsip Batch 1 (30 Oktober 2026) jika belum menjadi model aktif
     b1_dir = os.path.join("hasil_sistem_30_10_2026", "dataset_30-09-2026")
-    if os.path.exists(os.path.join(b1_dir, META_FILE)):
+    if os.path.exists(os.path.join(b1_dir, META_FILE)) and tgl_aktif != "2026-10-30":
         meta_b1 = _baca_json_aman(os.path.join(b1_dir, META_FILE))
         hasil.append({
             "id": "batch_1_30_10_2026",
@@ -619,24 +652,32 @@ def daftar_arsip() -> List[Dict[str, Any]]:
             "is_aktif": False,
         })
 
-    # 3. Sertakan arsip otomatis di folder arsip/ jika ada
+    # 3. Sertakan arsip otomatis di folder arsip/ jika ada (dan tidak duplikat dengan versi aktif)
     if os.path.exists(ARSIP_DIR):
         for nama in sorted(os.listdir(ARSIP_DIR), reverse=True):
             jalur = os.path.join(ARSIP_DIR, nama)
             if os.path.isdir(jalur) and os.path.exists(os.path.join(jalur, META_FILE)):
                 m = _baca_json_aman(os.path.join(jalur, META_FILE))
+                tgl_m = str(m.get("tanggal_latih", nama))
+                if nama == "batch_2_02_11_2026" and tgl_aktif == "2026-11-02":
+                    continue
                 f1_m = m.get("f1_macro_test_persen")
                 if f1_m is None:
                     f1_m = round(float(m.get("f1_macro_test", 0.0)) * 100, 2)
+                ket_m = (
+                    "Batch 2 - Arsip Pembaruan (02 November 2026)"
+                    if nama == "batch_2_02_11_2026"
+                    else f"Backup Otomatis ({nama})"
+                )
                 hasil.append({
                     "id": nama,
                     "path": jalur,
-                    "tanggal": m.get("tanggal_latih", nama),
+                    "tanggal": tgl_m,
                     "train_size": m.get("train_size", 0),
                     "test_size": m.get("test_size", 0),
                     "model_klasifikasi": m.get("model_klasifikasi", "-"),
                     "f1_test_pct": f1_m,
-                    "keterangan": f"Backup Otomatis ({nama})",
+                    "keterangan": ket_m,
                     "is_aktif": False,
                 })
     return hasil

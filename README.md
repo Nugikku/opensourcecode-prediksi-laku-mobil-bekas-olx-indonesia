@@ -20,30 +20,33 @@ Sistem menghitung harga wajar dari data iklan OLX, mengukur seberapa jauh rencan
 
 ```
 scraping.py                → dataset_olx_mentah.csv
-processing.py              → dataset_olx_bersih.csv
-pelabelan.py               → dataset_olx_berlabel.csv   (split train/test + label proxy)
-analisis_fitur.py          → fitur_final.json           (feature selection)
+processing.py              → dataset_olx_bersih.csv     (normalisasi slang + 5 fitur NLP)
+pelabelan.py               → dataset_olx_berlabel.csv   (split 80:20 di awal + regresi + label tertile)
+analisis_fitur.py          → fitur_final.json           (feature selection pada data train)
 train_model_klasifikasi.py → model_*.pkl + autolaku_meta.json
 test_sistem.py             → 21 tes otomatis
-app.py / test_prediksi_klasifikasi.py → antarmuka pengguna
+tambah_data.py             → gabung CSV baru + arsip + retrain pipeline + riwayat_data.json
+server.py / app.py         → antarmuka web utama (FastAPI) & alternatif (Streamlit)
 ```
 
 ## Struktur File
 
-| File | Peran |
+| File / Folder | Peran |
 |---|---|
-| `scraping.py` | Scraping iklan mobil bekas dari OLX |
-| `kamus_slang_otomotif.py` | Kamus normalisasi istilah otomotif |
-| `processing.py` | Pembersihan data mentah |
-| `pelabelan.py` | Split train/test, model harga wajar, label proxy |
-| `analisis_fitur.py` | Feature selection → `fitur_final.json` |
-| `model_khusus.py` | Naive Bayes dengan diskretisasi fitur numerik |
-| `train_model_klasifikasi.py` | Perbandingan, tuning, dan evaluasi model klasifikasi |
-| `tambah_data.py` | Menambah data latih baru, melatih ulang otomatis, mencatat riwayat sebelum vs sesudah (`riwayat_data.json`), dan menyediakan Guidebook PDF |
-| `mesin_prediksi.py` | Engine prediksi (dipakai CLI, tes, FastAPI web, dan Streamlit) |
-| `test_prediksi_klasifikasi.py` | Antarmuka terminal untuk penjual |
-| `test_sistem.py` | 21 tes otomatis |
-| `server.py` | Server web utama (FastAPI + Jinja2 + Tailwind CSS): Landing Page (`/`), Kalkulator (`/prediksi`), Tambah Data & Riwayat (`/tambah-data`), dan Unduh Guidebook (`/download/guidebook`) |
+| `scraping.py` | Scraping iklan mobil bekas dari OLX menggunakan Playwright |
+| `kamus_slang_otomotif.py` | Kamus normalisasi istilah & singkatan otomotif Indonesia |
+| `processing.py` | Pembersihan data mentah, ekstraksi 5 fitur NLP, dan imputasi median bertingkat |
+| `pelabelan.py` | Split train/test 80:20, seleksi model regresi harga wajar, dan pelabelan kuantil tertile |
+| `analisis_fitur.py` | Seleksi fitur statistik (Kruskal-Wallis, Cramer's V, MI, RF Importance) → `fitur_final.json` |
+| `model_khusus.py` | Pembungkus Naive Bayes (`CategoricalNBWrapper`) dengan diskretisasi kuartil |
+| `train_model_klasifikasi.py` | Perbandingan 6 kandidat model, nested CV tuning, uji ablation, dan evaluasi akhir |
+| `tambah_data.py` | Modul penambahan data latih baru, deduplikasi `id_iklan`, pengarsipan otomatis (`arsip/`), eksekusi ulang 5 tahap pipeline, *auto-rollback*, pencatatan riwayat perubahan (`riwayat_data.json`), dan penyedia Guidebook PDF |
+| `mesin_prediksi.py` | Engine inferensi tunggal (dipakai bersama oleh `server.py`, `app.py`, `test_prediksi_klasifikasi.py`, dan `test_sistem.py`) |
+| `test_prediksi_klasifikasi.py` | Antarmuka interaktif berbasis terminal (CLI) untuk penjual |
+| `test_sistem.py` | 21 pengujian otomatis untuk memverifikasi integritas data, model, dan pencegahan *data leakage* |
+| `server.py` | Server web utama berbasis FastAPI + Jinja2: Landing Page (`/`), Kalkulator & Simulator (`/prediksi`), Menu Tambah Data Baru & Audit Perubahan (`/tambah-data`), serta Unduh Guidebook (`/download/guidebook`) |
+| `templates/` | Template antarmuka web: `landing.html`, `index.html`, dan `tambah_data.html` |
+| `static/` | Aset statis web: foto merek mobil (`static/images/cars/`) dan Guidebook PDF (`static/guidebook_autolaku.pdf`) |
 | `app.py` | Antarmuka alternatif berbasis Streamlit |
 
 File yang dihasilkan otomatis: `dataset_olx_bersih.csv`, `dataset_olx_berlabel.csv`, `fitur_final.json`, `model_regresi_harga.pkl`, `model_klasifikasi_likuiditas.pkl`, `autolaku_meta.json`, `keputusan_fitur.csv`, `laporan_preprocessing.txt`, `riwayat_data.json`, `static/guidebook_autolaku.pdf`.
@@ -52,53 +55,65 @@ File yang dihasilkan otomatis: `dataset_olx_bersih.csv`, `dataset_olx_berlabel.c
 
 ## Cara Menjalankan
 
+> **Catatan Windows:** Jika perintah `python` mengarah ke Microsoft Store Alias di komputer Anda, gunakan perintah `py` sebagai pengganti `python`.
+
 ```bash
 pip install pandas numpy scikit-learn matplotlib streamlit fastapi uvicorn jinja2
 
-python processing.py
-python pelabelan.py
-python analisis_fitur.py
-python train_model_klasifikasi.py     # beberapa menit (nested CV)
-python test_sistem.py                 # target: 21/21 lulus
+py processing.py
+py pelabelan.py
+py analisis_fitur.py
+py train_model_klasifikasi.py     # beberapa menit (nested CV)
+py test_sistem.py                 # target: 21/21 lulus
 
-python server.py                      # antarmuka web utama (http://localhost:8000)
-streamlit run app.py                  # antarmuka Streamlit alternatif
-python test_prediksi_klasifikasi.py   # antarmuka terminal
+py server.py                      # antarmuka web utama (buka http://localhost:8000)
+streamlit run app.py              # antarmuka Streamlit alternatif
+py test_prediksi_klasifikasi.py   # antarmuka terminal
 ```
 
-> Hapus `.pkl` dan `autolaku_meta.json` lama sebelum menjalankan ulang dari awal. Jangan lewati `analisis_fitur.py`, karena `train_model_klasifikasi.py` membaca `fitur_final.json`.
-> Jika menggabungkan beberapa batch scraping, gunakan menu `/tambah-data` di web atau `python tambah_data.py`.
+> Hapus `.pkl` dan `autolaku_meta.json` lama sebelum menjalankan ulang dari awal secara manual. Jangan lewati `analisis_fitur.py`, karena `train_model_klasifikasi.py` membaca `fitur_final.json`.
+> Untuk menambahkan batch hasil scraping baru secara aman beserta arsip dan perbandingannya, gunakan menu web `/tambah-data` atau skrip `py tambah_data.py`.
 
 ---
 
 ## Menambah Data Latih Baru & Audit Perubahan Model
 
-Sistem dirancang untuk menjawab pertanyaan **"Bagaimana jika ada data baru?"** dengan fitur penambahan data dan pelatihan ulang otomatis (*Batch Retraining Pipeline*) yang dapat diakses langsung melalui website (`http://localhost:8000/tambah-data`) maupun terminal.
+Fitur ini dirancang khusus untuk menjawab pertanyaan evaluasi **"Bagaimana jika ada data baru?"**. Karena algoritma pada scikit-learn menggunakan pendekatan *Batch Learning*, setiap penambahan data baru diproses dengan menggabungkan iklan baru yang bebas duplikat ke dataset mentah, mengarsipkan versi lama, melatih ulang seluruh pipeline dari awal hingga pengujian 21 unit test, lalu menyajikan laporan perbandingan **Sebelum vs Sesudah** secara transparan.
 
-### 1. Melalui Menu Website (`/tambah-data`)
-Buka `http://localhost:8000/tambah-data` setelah menjalankan `python server.py`. Tersedia tiga fasilitas utama:
-- **Unduh Guidebook PDF (`/download/guidebook`):** Mengunduh buku panduan resmi cara melakukan scraping manual dari OLX serta panduan penggunaan aplikasi.
-- **Opsi A (Unggah CSV Hasil Scraping Baru & Retraining):** Mengunggah file `.csv` hasil `scraping.py` untuk digabungkan ke dataset lama, dilatih ulang secara menyeluruh, dan menampilkan perbandingan lengkap *Sebelum vs Sesudah* di setiap tahap pipeline.
-- **Opsi B (Percobaan Tambah Data Tanpa CSV):** Sesuai aturan integritas data sistem, percobaan menambah data tanpa CSV hasil scraping akan ditolak dengan notifikasi:
+### 1. Melalui Menu Website (`http://localhost:8000/tambah-data`)
+Jalankan `py server.py` lalu buka menu **Tambah Data & Riwayat** (`/tambah-data`). Halaman ini menyediakan:
+
+- **Unduh Guidebook PDF (`/download/guidebook`):**
+  Tombol untuk mengunduh buku panduan resmi (PDF) yang berisi langkah-langkah melakukan scraping manual dari OLX (`scraping.py`), syarat 13 kolom wajib CSV, serta cara penggunaan aplikasi. *(Jika Anda menaruh file `guidebook.pdf` di folder utama proyek, sistem otomatis menyajikan file tersebut).*
+- **Opsi A – Unggah CSV Hasil Scraping Baru & Retraining (`POST /api/tambah-data`):**
+  1. Memvalidasi struktur 13 kolom wajib (`id_iklan`, `tanggal_posting`, `status_iklan_terjual`, `judul`, `deskripsi`, `merek`, `model`, `tahun`, `transmisi`, `jarak_tempuh`, `harga`, `tipe_penjual_badge`, `lokasi`) serta menampilkan pratinjau jumlah baris di browser.
+  2. Membuang iklan duplikat berdasarkan `id_iklan` sehingga hanya iklan yang benar-benar baru yang ditambahkan.
+  3. Menyimpan cadangan (*backup*) 9 file data dan model aktif ke folder `arsip/<timestamp>/`.
+  4. Menjalankan 5 tahap pipeline secara berurutan: `processing.py` → `pelabelan.py` → `analisis_fitur.py` → `train_model_klasifikasi.py` → `test_sistem.py`.
+  5. Melakukan **Auto-Rollback** (memulihkan seluruh file dari arsip) apabila ada tahapan yang gagal.
+  6. Memuat ulang (*hot-reload*) model di memori server via `segarkan_sistem()` agar kalkulator `/prediksi` langsung memakai model terbaru tanpa perlu me-restart server.
+- **Opsi B – Percobaan Tambah Data Tanpa CSV (`POST /api/opsi-tanpa-csv`):**
+  Sesuai aturan integritas data sistem (karena ambang kuantil $Q_{33}$/$Q_{67}$ dan deduplikasi wajib berasal dari data iklan pasar riil OLX), jika pengguna mencoba memilih Opsi B (menambah data tanpa CSV hasil scraping), sistem menolak proses dan menampilkan notifikasi peringatan:
   > `"harus scraping manual, cara scraping dan penggunaan aplikasi ada di guidebook silahkan di download dan dibaca"`
+  dilengkapi tombol unduh langsung ke `/download/guidebook`.
+- **Dashboard Perbandingan Perubahan Model (Sebelum vs Sesudah):**
+  Menampilkan rincian pergeseran metrik dari data latihan lama ke data baru pada 5 tahapan:
+  1. **Tahap 1 (`processing.py`):** Baris mentah, duplikat dilewati, data bersih valid, baris noise, outlier harga IQR, imputasi KM, transmisi asumsi, jumlah merek & model unik, harga median pasar, serta **daftar merek baru yang bertambah**.
+  2. **Tahap 2 (`pelabelan.py`):** Ukuran Train Set (80%) & Test Set (20%), algoritma regresi harga wajar terpilih, MAPE, MAE, $R^2$, pergeseran ambang kuantil $Q_{33}$ dan $Q_{67}$, serta distribusi kelas *Cepat / Sedang / Lambat*.
+  3. **Tahap 3 (`analisis_fitur.py`):** Daftar 11 fitur yang dipertahankan vs 2 fitur yang dibuang (`tipe_penjual`, `usia_mobil`) beserta alasan statistiknya.
+  4. **Tahap 4 (`train_model_klasifikasi.py`):** Model klasifikasi terpilih, F1-Macro CV 5-Fold ($\pm$ std), F1-Macro Test, Akurasi Test, RMSE Ordinal, Keyakinan Puncak, pembuktian **Uji Ablation** (*Dengan* vs *Tanpa* `deviasi_persen`), serta tabel perbandingan 6 kandidat algoritma.
+  5. **Tahap 5 (`test_sistem.py` & Rollback `POST /api/rollback`):** Status kelulusan 21 tes otomatis serta tabel daftar seluruh versi model (**Batch 2 Aktif**, **Batch 1 Baseline**, dan backup otomatis) dengan tombol **Pulihkan Versi Ini (Rollback)**.
 
 ### 2. Melalui Terminal (`tambah_data.py`)
 
 ```bash
-python tambah_data.py hasil_scraping_baru.csv
-python tambah_data.py hasil_scraping_baru.csv --tanpa-latih   # hanya gabung data
-python tambah_data.py hasil_scraping_baru.csv --paksa         # tetap simpan walau tes gagal / 0 baris baru
+py tambah_data.py hasil_scraping_baru.csv
+py tambah_data.py hasil_scraping_baru.csv --tanpa-latih   # hanya gabung data ke CSV mentah
+py tambah_data.py hasil_scraping_baru.csv --paksa         # tetap latih ulang walau 0 baris baru / tes gagal
 ```
 
 ### 3. Melalui Aplikasi Streamlit (`app.py`)
-Buka sidebar `streamlit run app.py`, pilih **Admin: Tambah Data Latih & Retraining**, unggah CSV pada Opsi A, atau unduh Guidebook PDF.
-
-### Tahapan yang Dijalankan Sistem Secara Otomatis:
-1. Memeriksa kesesuaian 13 kolom wajib CSV baru dengan `dataset_olx_mentah.csv` dan membuang iklan duplikat yang `id_iklan`-nya sudah terdaftar.
-2. Mengarsipkan seluruh dataset dan model lama ke folder `arsip/<timestamp>/`.
-3. Menjalankan `processing.py` → `pelabelan.py` → `analisis_fitur.py` → `train_model_klasifikasi.py` → `test_sistem.py` (21 tes otomatis).
-4. Jika ada tahap yang gagal, seluruh file dipulihkan otomatis (*auto-rollback*) dari folder arsip.
-5. Mencatat riwayat perubahan lengkap (mulai dari jumlah data mentah/bersih, merek/model baru, pergeseran ambang kuantil `Q33`/`Q67`, MAPE/R² regresi, seleksi fitur, F1/akurasi klasifikasi, uji ablation, hingga 6 kandidat model) ke `riwayat_data.json` dan menampilkannya pada tabel perbandingan di web.
+Buka sidebar `streamlit run app.py`, pilih **Admin: Tambah Data Latih & Retraining**, unggah CSV pada Opsi A, coba Opsi B, atau unduh Guidebook PDF.
 
 ---
 
@@ -110,7 +125,7 @@ Pipeline dijalankan pada dua batch hasil scraping. **Batch 1** adalah data awal 
 
 | Aspek | Batch 1 | Batch 2 |
 |---|---|---|
-| Data mentah | 3.000 baris | lihat `laporan_preprocessing.txt` |
+| Data mentah | 3.000 baris | 3.000 baris |
 | Data bersih | 2.334 | 2.643 |
 | Noise km ditandai | 10 | 1 |
 | Data berlabel | 2.324 | 2.642 |
@@ -183,7 +198,8 @@ Seluruh 21 tes integritas sistem pada `test_sistem.py` lulus 100% pada kedua bat
 ## Data dan Preprocessing
 
 - **Sumber:** scraping mandiri dari [OLX Indonesia](https://www.olx.co.id/mobil-bekas_c198)
-- **Alur batch 1:** 3.000 mentah → 2.334 bersih → 2.324 berlabel (10 baris noise km dikeluarkan di `pelabelan.py`) → 1.859 train / 465 test (80/20, stratifikasi per kuartil harga)
+- **Alur batch 1 (30 Okt 2026):** 3.000 mentah → 2.334 bersih → 2.324 berlabel (10 baris noise km dikeluarkan di `pelabelan.py`) → 1.859 train / 465 test (80/20, stratifikasi per kuartil harga)
+- **Alur batch 2 (02 Nov 2026, aktif saat ini):** 3.000 mentah → 2.643 bersih → 2.642 berlabel (1 baris noise km dikeluarkan di `pelabelan.py`) → 2.113 train / 529 test (80/20, stratifikasi per kuartil harga)
 
 | Tahap | Keterangan |
 |---|---|
@@ -193,7 +209,7 @@ Seluruh 21 tes integritas sistem pada `test_sistem.py` lulus 100% pada kedua bat
 | Deteksi noise berbasis aturan domain (km) | Ditandai, lalu dikeluarkan saat pelabelan |
 | Deteksi outlier IQR pada log-harga per merek | Hanya ditandai, tidak dibuang (mobil mewah bisa valid) |
 | Fitur teks dengan penanganan negasi | `ada_garansi`, `riwayat_negatif`, `catatan_servis`, `pajak_hidup` |
-| Hapus duplikat (batch 1: 304 baris) | Sebagian besar iklan yang dipasang ulang (66% judul identik, 83% lokasi sama) |
+| Hapus duplikat (batch 1: 304 baris, batch 2: 185 duplikat lintas batch) | Sebagian besar iklan yang dipasang ulang (66% judul identik, 83% lokasi sama) |
 | Penanda transmisi asumsi | Iklan tanpa info transmisi diisi `automatic` dan ditandai `transmisi_dari_teks=0` |
 
 ---
@@ -202,9 +218,9 @@ Seluruh 21 tes integritas sistem pada `test_sistem.py` lulus 100% pada kedua bat
 
 Dilakukan di `analisis_fitur.py`, hanya pada data train. Hasilnya di `fitur_final.json` dan dibaca otomatis oleh training.
 
-- **Dibuang:** `tipe_penjual` (konstan, seluruhnya penjual individu) dan `usia_mobil` (redundan dengan `tahun`, r = 0,9995)
+- **Dibuang:** `tipe_penjual` (konstan, seluruhnya penjual individu) dan `usia_mobil` (redundan dengan `tahun`, r = −1,00 / |r| ≥ 0,9995)
 - **Dipakai (11 fitur):** `merek`, `model`, `transmisi`, `ada_garansi`, `riwayat_negatif`, `catatan_servis`, `pajak_hidup`, `tahun`, `jarak_tempuh`, `km_per_tahun`, `deviasi_persen`
-- **Temuan (batch 1):** `deviasi_persen` sangat dominan (importance Random Forest 64,79%). Fitur lain hampir tidak berpengaruh pada permutation importance.
+- **Temuan:** `deviasi_persen` sangat dominan (importance Random Forest 64,79% pada batch 1 dan 55,66% pada batch 2). Fitur lain berperan sebagai penjelas pendamping.
 
 ---
 
@@ -212,24 +228,24 @@ Dilakukan di `analisis_fitur.py`, hanya pada data train. Hasilnya di `fitur_fina
 
 ### Harga wajar
 
-Ridge Regression, target log(harga), dipilih dengan MAPE terendah pada 5-fold CV data train. Kandidat: Linear, Ridge, Random Forest, Gradient Boosting. Kombinasi dengan sampel kurang dari 15 memakai fallback regresi usia per model atau per merek.
+Target regresi adalah $\log(\text{harga})$, dipilih otomatis berdasarkan MAPE terendah pada 5-fold CV data train dari 4 kandidat (`Linear Regression`, `Ridge (alpha=1.0)`, `Random Forest`, `Gradient Boosting`). Pada Batch 1 terpilih **Ridge (alpha=1.0)** (MAPE OOF 18,77%, $R^2$ 0,7726), sedangkan pada Batch 2 terpilih **Linear Regression** (MAPE OOF 20,10% dengan fallback / 19,50% model saja, $R^2$ 0,7735). Kombinasi dengan sampel kurang dari 15 memakai fallback regresi usia per model atau per merek.
 
-### Klasifikasi (hasil final batch 1)
+### Klasifikasi (perbandingan 6 kandidat pada Skenario 2)
 
-| Model | F1 CV | Std | F1 Train | Keputusan |
+| Model | F1 CV (Batch 1) | F1 CV (Batch 2) | Keyakinan (Batch 2) | Keputusan |
 |---|---|---|---|---|
-| Logistic Regression | 93,84% | 1,54% | 97,29% | OK |
-| KNN (K=5) | 61,59% | 1,15% | 76,93% | Ditolak: overfitting |
-| Naive Bayes (Bernoulli, diskretisasi) | 87,62% | 0,85% | 89,28% | OK |
-| Decision Tree | 99,79% | 0,20% | 100% | Ditolak: overconfident |
-| **Random Forest** | **99,41%** | 0,46% | 100% | **Terpilih** |
-| Gradient Boosting | 99,79% | 0,20% | 100% | Ditolak: overconfident |
+| Logistic Regression | 93,84% ± 1,54% | 93,61% ± 1,22% | 84,56% | OK |
+| KNN (K=5) | 61,59% ± 1,15% | 59,14% ± 3,50% | 68,89% | Ditolak: overfitting & langgar monoton |
+| Naive Bayes (Bernoulli, diskretisasi) | 87,51% ± 0,78% | 88,34% ± 1,22% | 92,26% | OK |
+| Decision Tree | 99,79% ± 0,20% | 99,86% ± 0,12% | 100,00% | Ditolak: overconfident (100%) |
+| **Random Forest** | **99,41% ± 0,46%** | **98,73% ± 0,64%** | **60,66%** | **Terpilih (Batch 1 & Batch 2)** |
+| Gradient Boosting | 99,79% ± 0,20% | 99,86% ± 0,12% | 100,00% | Ditolak: overconfident (100%) |
 
-Kriteria pilih: F1-macro CV tertinggi di antara model yang monoton terhadap harga, tidak overconfident (keyakinan ≤ 0,97), dan tanpa overfitting berlebih. **Tuning:** RandomizedSearchCV dengan nested CV memberi F1 99,57% ± 0,36%. Selisih dengan parameter default tidak melebihi satu standar deviasi, sehingga parameter default dipertahankan.
+Kriteria pilih: F1-macro CV tertinggi di antara model yang monoton terhadap harga, tidak overconfident (keyakinan puncak ≤ 97%), dan tanpa overfitting berlebih. **Tuning:** RandomizedSearchCV dengan nested CV memberi F1 99,57% ± 0,36% (Batch 1) dan 99,76% ± 0,15% (Batch 2), namun parameter default Random Forest dipertahankan karena selisih tidak melebihi 1 std atau kandidat hasil tuning melanggar batas overconfidence.
 
 **Label proxy:** Cepat jika deviasi ≤ Q33, Sedang jika di antara Q33 dan Q67, Lambat jika di atas Q67. Ambang hanya dari data train.
 
-**Uji ablation:** tanpa `deviasi_persen`, akurasi turun dari 98,71% ke 51,40%, mendekati tebakan acak. Classifier sebagian besar mempelajari ulang aturan yang membentuk labelnya.
+**Uji ablation:** tanpa `deviasi_persen`, akurasi pada test set turun dari 98,71% ke 51,40% (Batch 1) dan dari 98,49% ke 42,91% (Batch 2), mendekati tebakan acak. Classifier mempelajari aturan pemisahan kuantil deviasi harga bersama fitur spesifikasi dan teks iklan.
 
 ---
 

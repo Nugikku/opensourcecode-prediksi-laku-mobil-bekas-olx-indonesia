@@ -1051,6 +1051,9 @@
                                 document.getElementById('badge-aktif-berlabel').textContent = fmtInt(data.snapshot_aktif.pelabelan.data_berlabel);
                                 document.getElementById('badge-aktif-tanggal').textContent = data.snapshot_aktif.tanggal_snapshot;
                             }
+                            if (data.arsip_list && Array.isArray(data.arsip_list)) {
+                                renderTabelArsip(data.arsip_list);
+                            }
                         }
                     } catch (err) {
                         tampilkanNotifikasiAtas(
@@ -1066,15 +1069,69 @@
                 });
             }
 
-            // Handler Tombol Rollback Arsip
-            document.querySelectorAll('.btn-rollback').forEach(btn => {
-                btn.addEventListener('click', async function () {
-                    const path = this.getAttribute('data-arsip-path');
+            function renderTabelArsip(arsipList) {
+                const tbody = document.getElementById('tbody-arsip');
+                if (!tbody || !Array.isArray(arsipList)) return;
+                if (arsipList.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="py-6 px-4 text-center text-stone-600">
+                                Belum ada arsip tersimpan. Arsip baru akan dibuat otomatis saat Anda mengunggah CSV baru.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                tbody.innerHTML = arsipList.map(ar => `
+                    <tr class="${ar.is_aktif ? 'bg-emerald-50/50' : 'hover:bg-stone-50'}">
+                        <td class="py-3.5 px-4 sm:px-6 font-semibold text-stone-900">
+                            <div class="flex items-center gap-2">
+                                <span>${ar.keterangan}</span>
+                                ${ar.is_aktif ? `
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold uppercase tracking-wider">
+                                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i> Aktif di Web
+                                </span>` : `
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 text-[10px] font-semibold">
+                                    Arsip Cadangan
+                                </span>`}
+                            </div>
+                            <span class="block text-[11px] font-mono text-stone-500 mt-0.5">${ar.path}</span>
+                        </td>
+                        <td class="py-3.5 px-4 font-mono text-xs text-stone-700">${ar.tanggal}</td>
+                        <td class="py-3.5 px-4 text-right font-mono text-xs text-stone-800">${ar.train_size} / ${ar.test_size}</td>
+                        <td class="py-3.5 px-4 text-stone-800">${ar.model_klasifikasi}</td>
+                        <td class="py-3.5 px-4 text-right font-mono font-bold text-emerald-700">${ar.f1_test_pct}%</td>
+                        <td class="py-3.5 px-4 sm:px-6 text-right">
+                            ${ar.is_aktif ? `
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-2 rounded-lg">
+                                <i class="fa-solid fa-circle-check text-emerald-600" aria-hidden="true"></i>
+                                <span>Versi Aktif</span>
+                            </span>` : `
+                            <button
+                                type="button"
+                                data-arsip-path="${ar.path}"
+                                class="btn-rollback inline-flex items-center gap-1.5 text-xs font-bold text-stone-800 hover:text-white bg-stone-100 hover:bg-red-700 border border-stone-300 hover:border-red-700 px-3 py-2 rounded-lg transition min-h-[44px]"
+                            >
+                                <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                                <span>Pulihkan Versi Ini</span>
+                            </button>`}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // Handler Tombol Rollback Arsip (Event Delegation agar tetap bekerja setelah tabel di-render ulang)
+            const tbodyArsipEl = document.getElementById('tbody-arsip');
+            if (tbodyArsipEl) {
+                tbodyArsipEl.addEventListener('click', async function (ev) {
+                    const btn = ev.target.closest('.btn-rollback');
+                    if (!btn) return;
+                    const path = btn.getAttribute('data-arsip-path');
                     if (!path) return;
                     if (!window.confirm(`Apakah Anda yakin ingin memulihkan dataset dan model dari arsip "${path}"?`)) {
                         return;
                     }
-                    this.disabled = true;
+                    btn.disabled = true;
                     try {
                         const res = await fetch('/api/rollback', {
                             method: 'POST',
@@ -1088,16 +1145,19 @@
                                 document.getElementById('badge-aktif-berlabel').textContent = fmtInt(data.snapshot_aktif.pelabelan.data_berlabel);
                                 document.getElementById('badge-aktif-tanggal').textContent = data.snapshot_aktif.tanggal_snapshot;
                             }
+                            if (data.arsip_list && Array.isArray(data.arsip_list)) {
+                                renderTabelArsip(data.arsip_list);
+                            }
                         } else {
                             tampilkanNotifikasiAtas(false, 'Gagal Memulihkan Arsip', data.pesan || 'Gagal rollback.', false);
                         }
                     } catch (e) {
                         tampilkanNotifikasiAtas(false, 'Kesalahan Server', String(e), false);
                     } finally {
-                        this.disabled = false;
+                        btn.disabled = false;
                     }
                 });
-            });
+            }
         })();
     </script>
 </body>
