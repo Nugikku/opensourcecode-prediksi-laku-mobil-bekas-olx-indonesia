@@ -1,0 +1,102 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 2637 >>
+stream
+BT
+1 0 0 1 50 790 Tm /F2 16 Tf (GUIDEBOOK PENGGUNAAN APLIKASI & SCRAPING MANUAL) Tj
+1 0 0 1 50 764 Tm /F2 12 Tf (AutoLaku - Sistem Prediksi Kecepatan Laku Mobil Bekas OLX Indonesia) Tj
+1 0 0 1 50 745 Tm /F1 10 Tf (Tugas Data Mining - Kelas TI24A2 | Universitas Duta Bangsa Surakarta) Tj
+1 0 0 1 50 729 Tm /F1 10 Tf (----------------------------------------------------------------------------------------) Tj
+1 0 0 1 50 713 Tm /F2 12 Tf (1. MENGAPA PENAMBAHAN DATA HARUS MELALUI SCRAPING MANUAL?) Tj
+1 0 0 1 50 694 Tm /F1 10 Tf (Model Machine Learning pada AutoLaku \(Random Forest & Regresi Harga Wajar\) menggunakan) Tj
+1 0 0 1 50 678 Tm /F1 10 Tf (pendekatan Batch Learning berbasis data pasar riil OLX Indonesia. Penambahan data tidak) Tj
+1 0 0 1 50 662 Tm /F1 10 Tf (boleh dilakukan secara sembarangan tanpa struktur iklan asli karena:) Tj
+1 0 0 1 50 646 Tm /F1 10 Tf (  a. Setiap baris wajib memiliki id_iklan unik dari OLX untuk mencegah duplikasi.) Tj
+1 0 0 1 50 630 Tm /F1 10 Tf (  b. Ambang kuantil tertile \(Q33 dan Q67\) dihitung ulang dari distribusi deviasi harga.) Tj
+1 0 0 1 50 614 Tm /F1 10 Tf (  c. Ekstraksi 5 fitur NLP membutuhkan teks judul dan deskripsi iklan asli.) Tj
+1 0 0 1 50 598 Tm /F1 10 Tf () Tj
+1 0 0 1 50 582 Tm /F2 12 Tf (2. PERSYARATAN LINGKUNGAN \(ENVIRONMENT\)) Tj
+1 0 0 1 50 563 Tm /F1 10 Tf (Pastikan Python dan pustaka berikut sudah terpasang di komputer Anda:) Tj
+1 0 0 1 50 547 Tm /F1 10 Tf (  pip install pandas numpy scikit-learn matplotlib streamlit fastapi uvicorn jinja2 playwright) Tj
+1 0 0 1 50 531 Tm /F1 10 Tf (  playwright install chromium) Tj
+1 0 0 1 50 515 Tm /F1 10 Tf () Tj
+1 0 0 1 50 499 Tm /F2 12 Tf (3. LANGKAH-LANGKAH SCRAPING MANUAL DARI OLX \(scraping.py\)) Tj
+1 0 0 1 50 480 Tm /F1 10 Tf (  1\) Buka terminal pada folder proyek AutoLaku.) Tj
+1 0 0 1 50 464 Tm /F1 10 Tf (  2\) Jalankan perintah: python scraping.py) Tj
+1 0 0 1 50 448 Tm /F1 10 Tf (  3\) Browser Chromium akan terbuka otomatis dan mengunjungi daftar URL kategori mobil) Tj
+1 0 0 1 50 432 Tm /F1 10 Tf (     bekas OLX Indonesia \(c198\) per merek dan provinsi.) Tj
+1 0 0 1 50 416 Tm /F1 10 Tf (  4\) Skrip menyadap respons JSON API internal OLX, memfilter kategori mobil \(id 198\),) Tj
+1 0 0 1 50 400 Tm /F1 10 Tf (     dan menyimpan checkpoint otomatis setiap 200 iklan ke dataset_olx_mentah.csv.) Tj
+1 0 0 1 50 384 Tm /F1 10 Tf (  5\) Kolom wajib yang dihasilkan pada CSV mentah:) Tj
+1 0 0 1 50 368 Tm /F1 9 Tf (     id_iklan, tanggal_posting, status_iklan_terjual, judul, deskripsi, merek, model,) Tj
+1 0 0 1 50 354 Tm /F1 9 Tf (     tahun, transmisi, jarak_tempuh, harga, tipe_penjual_badge, lokasi) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 2406 >>
+stream
+BT
+1 0 0 1 50 790 Tm /F2 14 Tf (4. CARA MENAMBAHKAN DATA BARU & MELATIH ULANG \(RETRAINING\)) Tj
+1 0 0 1 50 767 Tm /F1 10 Tf (----------------------------------------------------------------------------------------) Tj
+1 0 0 1 50 751 Tm /F2 11 Tf (A. Melalui Menu Website \(/tambah-data\):) Tj
+1 0 0 1 50 733 Tm /F1 10 Tf (  1\) Jalankan server web: python server.py) Tj
+1 0 0 1 50 717 Tm /F1 10 Tf (  2\) Buka http://localhost:8000/tambah-data melalui peramban.) Tj
+1 0 0 1 50 701 Tm /F1 10 Tf (  3\) Pada bagian Opsi A \(Unggah CSV Hasil Scraping\), pilih file CSV hasil scraping.) Tj
+1 0 0 1 50 685 Tm /F1 10 Tf (  4\) Klik tombol 'Gabungkan Data & Latih Ulang Model'.) Tj
+1 0 0 1 50 669 Tm /F1 10 Tf (  5\) Sistem akan otomatis:) Tj
+1 0 0 1 50 653 Tm /F1 10 Tf (     - Memeriksa kesesuaian 13 kolom wajib CSV mentah.) Tj
+1 0 0 1 50 637 Tm /F1 10 Tf (     - Membuang iklan duplikat yang id_iklan-nya sudah tercatat.) Tj
+1 0 0 1 50 621 Tm /F1 10 Tf (     - Mengarsipkan dataset dan model lama ke folder arsip/<timestamp>/.) Tj
+1 0 0 1 50 605 Tm /F1 10 Tf (     - Menjalankan processing.py, pelabelan.py, analisis_fitur.py,) Tj
+1 0 0 1 50 589 Tm /F1 10 Tf (       train_model_klasifikasi.py, dan 21 tes otomatis di test_sistem.py.) Tj
+1 0 0 1 50 573 Tm /F1 10 Tf (     - Menampilkan tabel perbandingan lengkap Sebelum vs Sesudah pelatihan ulang.) Tj
+1 0 0 1 50 557 Tm /F1 10 Tf () Tj
+1 0 0 1 50 541 Tm /F2 11 Tf (B. Melalui Terminal \(tambah_data.py\):) Tj
+1 0 0 1 50 523 Tm /F1 10 Tf (  python tambah_data.py hasil_scraping_baru.csv) Tj
+1 0 0 1 50 507 Tm /F1 10 Tf (  python tambah_data.py hasil_scraping_baru.csv --tanpa-latih) Tj
+1 0 0 1 50 491 Tm /F1 10 Tf (  python tambah_data.py hasil_scraping_baru.csv --paksa) Tj
+1 0 0 1 50 475 Tm /F1 10 Tf () Tj
+1 0 0 1 50 459 Tm /F2 12 Tf (5. CARA PENGGUNAAN KALKULATOR PREDIKSI & SIMULATOR HARGA) Tj
+1 0 0 1 50 440 Tm /F1 10 Tf (  1\) Buka halaman /prediksi pada website AutoLaku.) Tj
+1 0 0 1 50 424 Tm /F1 10 Tf (  2\) Pilih Merek, Model/Seri, Tahun Perakitan \(1995-2026\), dan Transmisi.) Tj
+1 0 0 1 50 408 Tm /F1 10 Tf (  3\) Masukkan Jarak Tempuh \(KM\), Rencana Harga Jual \(Rp\), dan Draf Deskripsi Iklan.) Tj
+1 0 0 1 50 392 Tm /F1 10 Tf (  4\) Klik tombol 'Analisis & Prediksi Likuiditas' untuk melihat status Cepat/Sedang/Lambat,) Tj
+1 0 0 1 50 376 Tm /F1 10 Tf (     estimasi harga wajar, pemindaian kata kunci NLP, dan simulator geser harga.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
+7 0 obj
+<< /Type /Pages /Kids [5 0 R 6 0 R] /Count 2 >>
+endobj
+8 0 obj
+<< /Type /Catalog /Pages 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000106 00000 n 
+0000000208 00000 n 
+0000002897 00000 n 
+0000005355 00000 n 
+0000005491 00000 n 
+0000005627 00000 n 
+0000005690 00000 n 
+trailer
+<< /Size 9 /Root 8 0 R >>
+startxref
+5739
+%%EOF

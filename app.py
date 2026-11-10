@@ -5,11 +5,13 @@ test_prediksi_klasifikasi.py & test_sistem.py) -- app.py ini murni tampilan,
 tidak ada aturan if-else manual di sini.
 """
 
+import os
 import streamlit as st
 import pandas as pd
 
 from mesin_prediksi import muat_sistem, daftar_pilihan, prediksi, InputTidakValid
 from processing import AMBANG_KEYAKINAN_SAMPEL
+from tambah_data import tambah_dan_latih, pastikan_guidebook_pdf
 
 st.set_page_config(page_title="AutoLaku - Prediksi Kecepatan Laku Mobil Bekas OLX",
                     page_icon="🚗", layout="wide")
@@ -47,6 +49,46 @@ with st.sidebar:
         st.markdown(f"**Ambang Tertile (Hanya dari Train):**  \n- Cepat: $\\le {meta['q33']:.2f}\\%$  \n- Sedang: ${meta['q33']:.2f}\\%$ s/d ${meta['q67']:.2f}\\%$  \n- Lambat: $> {meta['q67']:.2f}\\%$")
     st.markdown("---")
     st.caption("🛡️ **Bebas Data Leakage (P12):** Ambang tertile & model regresi dihitung murni dari data training (80%) sebelum label proxy dibuat.")
+
+    # Unduh Guidebook PDF
+    pdf_path = pastikan_guidebook_pdf()
+    if os.path.exists(pdf_path):
+        with open(pdf_path, "rb") as f_pdf:
+            st.download_button(
+                label="📄 Download Guidebook PDF",
+                data=f_pdf.read(),
+                file_name="Guidebook_AutoLaku_Scraping_dan_Aplikasi.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+
+    with st.expander("🔄 Admin: Tambah Data Latih & Retraining"):
+        st.caption("Opsi A: Unggah CSV hasil scraping baru (`dataset_olx_mentah.csv`).")
+        csv_upload = st.file_uploader("Pilih CSV Hasil Scraping", type=["csv"])
+        if st.button("Gabungkan & Latih Ulang (Opsi A)", use_container_width=True):
+            if csv_upload is None:
+                st.error("Silakan pilih file CSV terlebih dahulu.")
+            else:
+                os.makedirs("arsip", exist_ok=True)
+                tmp_path = os.path.join("arsip", "_tmp_streamlit_upload.csv")
+                with open(tmp_path, "wb") as f_tmp:
+                    f_tmp.write(csv_upload.getvalue())
+                try:
+                    with st.spinner("Menjalankan pipeline retraining penuh..."):
+                        res_latih = tambah_dan_latih(tmp_path, nama_file_asli=csv_upload.name)
+                    st.cache_resource.clear()
+                    st.success(res_latih.get("pesan", "Berhasil melatih ulang!"))
+                    st.rerun()
+                except Exception as err_latih:
+                    st.error(str(err_latih))
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
+
+        st.markdown("---")
+        st.caption("Opsi B: Tambah Data Tanpa CSV")
+        if st.button("Coba Tambah Tanpa CSV (Opsi B)", use_container_width=True):
+            st.error("harus scraping manual, cara scraping dan penggunaan aplikasi ada di guidebook silahkan di download dan dibaca")
 
 st.title("🚗 AutoLaku")
 st.caption("Sistem Prediksi Kecepatan Laku Mobil Bekas OLX Berdasarkan Harga Wajar, "

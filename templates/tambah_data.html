@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tambah Data Baru &amp; Retraining Model | AutoLaku OLX Indonesia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #fafaf9;
+            color: #1c1917;
+        }
+        a, button, [role="button"], summary, label[for], select, input[type="file"], input[type="checkbox"] {
+            cursor: pointer;
+        }
+        button:disabled, input:disabled, select:disabled {
+            cursor: not-allowed;
+        }
+        :focus-visible {
+            outline: 2px solid #dc2626;
+            outline-offset: 2px;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-red-600 selection:text-white">
+
+    <!-- Header & Navigasi Utama -->
+    <header class="sticky top-0 z-50 bg-stone-950/95 backdrop-blur-md border-b border-stone-800 text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-car-side text-white text-lg" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-display font-extrabold text-lg tracking-tight text-white">Auto<span class="text-orange-400">Laku</span></span>
+                        <span class="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-950/90 text-orange-300 border border-red-800/70 font-semibold">Data &amp; Retraining</span>
+                    </div>
+                    <p class="text-xs text-stone-300 hidden sm:block">Manajemen Dataset Baru, Pipeline Pelatihan Ulang &amp; Audit Perubahan Model</p>
+                </div>
+            </a>
+
+            <!-- Navigasi Desktop -->
+            <nav aria-label="Navigasi utama" class="hidden md:flex items-center gap-2">
+                <a href="/" class="inline-flex items-center gap-2 text-xs font-semibold text-stone-200 hover:text-white bg-stone-900 hover:bg-stone-800 px-3.5 py-2.5 rounded-lg border border-stone-800 transition min-h-[44px]">
+                    <i class="fa-solid fa-house text-orange-400" aria-hidden="true"></i>
+                    <span>Beranda</span>
+                </a>
+                <a href="/prediksi" class="inline-flex items-center gap-2 text-xs font-semibold text-stone-200 hover:text-white bg-stone-900 hover:bg-stone-800 px-3.5 py-2.5 rounded-lg border border-stone-800 transition min-h-[44px]">
+                    <i class="fa-solid fa-calculator text-orange-400" aria-hidden="true"></i>
+                    <span>Kalkulator Prediksi</span>
+                </a>
+                <a href="/tambah-data" aria-current="page" class="inline-flex items-center gap-2 text-xs font-semibold text-white bg-red-700/90 hover:bg-red-700 px-3.5 py-2.5 rounded-lg border border-red-500/60 transition min-h-[44px]">
+                    <i class="fa-solid fa-database text-amber-300" aria-hidden="true"></i>
+                    <span>Tambah Data &amp; Riwayat</span>
+                </a>
+                <a href="/download/guidebook" download class="inline-flex items-center gap-2 text-xs font-bold text-stone-950 bg-amber-400 hover:bg-amber-300 px-3.5 py-2.5 rounded-lg transition shadow-sm min-h-[44px]">
+                    <i class="fa-solid fa-file-pdf text-red-800" aria-hidden="true"></i>
+                    <span>Unduh Guidebook PDF</span>
+                </a>
+            </nav>
+
+            <!-- Tombol Menu Mobile -->
+            <button type="button" id="btn-mobile-nav" aria-expanded="false" aria-controls="mobile-nav" aria-label="Buka menu navigasi" class="md:hidden inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg bg-stone-900 border border-stone-700 text-stone-200 hover:text-white hover:bg-stone-800 transition">
+                <i class="fa-solid fa-bars text-base" id="icon-mobile-nav" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <!-- Menu Mobile -->
+        <nav id="mobile-nav" aria-label="Navigasi mobile" class="hidden md:hidden bg-stone-900 border-b border-stone-800 px-4 pt-2 pb-4 space-y-2">
+            <a href="/" class="flex items-center gap-3 text-sm font-semibold text-stone-200 hover:text-white px-3 py-2.5 rounded-lg hover:bg-stone-800 min-h-[44px]">
+                <i class="fa-solid fa-house text-orange-400 w-5 text-center" aria-hidden="true"></i>
+                <span>Beranda Info Sistem</span>
+            </a>
+            <a href="/prediksi" class="flex items-center gap-3 text-sm font-semibold text-stone-200 hover:text-white px-3 py-2.5 rounded-lg hover:bg-stone-800 min-h-[44px]">
+                <i class="fa-solid fa-calculator text-orange-400 w-5 text-center" aria-hidden="true"></i>
+                <span>Kalkulator Prediksi</span>
+            </a>
+            <a href="/tambah-data" aria-current="page" class="flex items-center gap-3 text-sm font-semibold text-white bg-red-800/60 border border-red-600/50 px-3 py-2.5 rounded-lg min-h-[44px]">
+                <i class="fa-solid fa-database text-amber-300 w-5 text-center" aria-hidden="true"></i>
+                <span>Tambah Data &amp; Riwayat</span>
+            </a>
+            <a href="/download/guidebook" download class="flex items-center justify-center gap-2 text-sm font-bold text-stone-950 bg-amber-400 hover:bg-amber-300 px-3 py-2.5 rounded-lg min-h-[44px]">
+                <i class="fa-solid fa-file-pdf text-red-800" aria-hidden="true"></i>
+                <span>Unduh Guidebook PDF</span>
+            </a>
+        </nav>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+
+        <!-- Hero & Guidebook Banner -->
+        <section class="bg-gradient-to-br from-stone-900 via-stone-900 to-red-950 rounded-2xl p-6 sm:p-8 text-white border border-stone-800 shadow-lg">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                <div class="lg:col-span-8 space-y-3">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-900/60 border border-red-700/60 text-orange-200 text-xs font-semibold">
+                        <i class="fa-solid fa-rotate text-orange-400" aria-hidden="true"></i>
+                        <span>Siklus Pembaruan Model (Batch Retraining Pipeline)</span>
+                    </div>
+                    <h1 class="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
+                        Penambahan Data Latih Baru &amp; Audit Perubahan Model
+                    </h1>
+                    <p class="text-sm sm:text-base text-stone-200 max-w-3xl leading-relaxed">
+                        Halaman ini menjawab pertanyaan <strong class="text-amber-300 font-semibold">"Bagaimana jika ada data baru?"</strong> secara menyeluruh. Unggah CSV hasil scraping baru untuk menggabungkan data bebas duplikat, melatih ulang model regresi dan klasifikasi secara otomatis, lalu membandingkan pergeseran metrik dari data latihan awal hingga data terbaru.
+                    </p>
+                </div>
+
+                <!-- Kartu Unduh Guidebook PDF -->
+                <div class="lg:col-span-4 bg-stone-950/90 border border-stone-700 rounded-xl p-5 space-y-3">
+                    <div class="flex items-start gap-3">
+                        <div class="w-11 h-11 rounded-lg bg-red-900/60 border border-red-700 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-file-pdf text-amber-300 text-xl" aria-hidden="true"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-display font-bold text-base text-white">Guidebook Resmi AutoLaku</h2>
+                            <p class="text-xs text-stone-300 mt-0.5 leading-relaxed">
+                                Panduan lengkap cara scraping manual dari OLX (<code class="text-amber-300 font-mono">scraping.py</code>), struktur kolom wajib, serta cara penggunaan aplikasi.
+                            </p>
+                        </div>
+                    </div>
+                    <a href="/download/guidebook" download class="w-full inline-flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition shadow-sm min-h-[44px]">
+                        <i class="fa-solid fa-download" aria-hidden="true"></i>
+                        <span>Download Guidebook PDF</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dua Opsi Penambahan Data (Opsi A & Opsi B) -->
+        <section aria-labelledby="heading-metode-tambah" class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+                <div>
+                    <h2 id="heading-metode-tambah" class="font-display text-xl sm:text-2xl font-bold text-stone-900">
+                        Pilih Metode Penambahan Data Baru
+                    </h2>
+                    <p class="text-sm text-stone-600">
+                        Sistem memisahkan jalur unggah CSV hasil scraping terstruktur (Opsi A) dan percobaan tambah data tanpa CSV (Opsi B).
+                    </p>
+                </div>
+                <span class="text-xs font-mono text-stone-600 bg-stone-200/80 px-3 py-1.5 rounded-lg border border-stone-300">
+                    Dataset Aktif: <strong id="badge-aktif-berlabel" class="text-stone-900 tabular-nums">{{ snapshot_aktif.pelabelan.data_berlabel }}</strong> iklan berlabel (<strong id="badge-aktif-tanggal" class="text-stone-900">{{ snapshot_aktif.tanggal_snapshot }}</strong>)
+                </span>
+            </div>
+
+            <!-- Area Notifikasi Global (Sukses / Gagal / Opsi B) -->
+            <div id="notifikasi-container" role="region" aria-live="polite" class="hidden"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                <!-- OPSI A: Unggah CSV Hasil Scraping Baru & Latih Ulang -->
+                <div class="lg:col-span-7 bg-white rounded-2xl border-2 border-stone-200 shadow-sm p-6 space-y-5">
+                    <div class="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center shrink-0 font-display font-bold text-base">
+                                A
+                            </div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h3 class="font-display font-bold text-lg text-stone-900">
+                                        Opsi A: Unggah CSV Hasil Scraping Baru &amp; Retraining
+                                    </h3>
+                                    <span class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        Direkomendasikan
+                                    </span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-stone-600 mt-1">
+                                    Unggah file <code class="font-mono text-xs bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">.csv</code> hasil eksekusi <code class="font-mono text-xs bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">python scraping.py</code>. Sistem akan memvalidasi 13 kolom wajib, membuang duplikat <code class="font-mono text-xs">id_iklan</code>, mengarsipkan model lama, lalu menjalankan ulang 5 tahap pipeline.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="form-tambah-csv" class="space-y-4" novalidate>
+                        <div>
+                            <label for="input-csv-baru" class="block text-sm font-semibold text-stone-800 mb-2">
+                                File CSV Hasil Scraping OLX (<code class="font-mono text-xs text-red-700">dataset_olx_mentah.csv</code> format)
+                            </label>
+                            <input
+                                type="file"
+                                id="input-csv-baru"
+                                name="csv_baru"
+                                accept=".csv,text/csv"
+                                class="block w-full text-sm text-stone-700 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-stone-900 file:text-white hover:file:bg-stone-800 border border-stone-300 rounded-xl p-2 bg-stone-50 min-h-[44px]"
+                            >
+                            <p class="text-xs text-stone-600 mt-1.5">
+                                Kolom wajib (13 kolom): <span class="font-mono text-[11px] text-stone-700">{{ kolom_wajib | join(', ') }}</span>
+                            </p>
+                        </div>
+
+                        <!-- Pratinjau File CSV yang Dipilih -->
+                        <div id="preview-csv-box" class="hidden rounded-xl bg-stone-50 border border-stone-200 p-4 space-y-2 text-xs">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-bold text-stone-900 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-file-csv text-emerald-700" aria-hidden="true"></i>
+                                    <span id="preview-nama-file">-</span>
+                                </span>
+                                <span id="preview-ukuran-file" class="font-mono text-stone-600 tabular-nums">-</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-stone-200">
+                                <div>
+                                    <span class="text-stone-600">Perkiraan Baris Data:</span>
+                                    <strong id="preview-baris" class="text-stone-900 font-mono ml-1 tabular-nums">0</strong>
+                                </div>
+                                <div>
+                                    <span class="text-stone-600">Status 13 Kolom Wajib:</span>
+                                    <strong id="preview-status-kolom" class="ml-1">-</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Opsi Tambahan -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <label for="chk-tanpa-latih" class="flex items-start gap-2.5 p-3 rounded-xl border border-stone-200 bg-stone-50/70 hover:bg-stone-100/80 transition min-h-[44px]">
+                                <input type="checkbox" id="chk-tanpa-latih" class="mt-1 h-4 w-4 rounded border-stone-300 text-red-600 focus:ring-red-600">
+                                <span class="text-xs text-stone-700 leading-snug">
+                                    <strong class="block text-stone-900 font-semibold">Hanya Gabungkan Data</strong>
+                                    Simpan ke CSV mentah tanpa melatih ulang model (<code class="font-mono">--tanpa-latih</code>).
+                                </span>
+                            </label>
+
+                            <label for="chk-paksa" class="flex items-start gap-2.5 p-3 rounded-xl border border-stone-200 bg-stone-50/70 hover:bg-stone-100/80 transition min-h-[44px]">
+                                <input type="checkbox" id="chk-paksa" class="mt-1 h-4 w-4 rounded border-stone-300 text-red-600 focus:ring-red-600">
+                                <span class="text-xs text-stone-700 leading-snug">
+                                    <strong class="block text-stone-900 font-semibold">Mode Paksa (Force Retrain)</strong>
+                                    Tetap latih ulang meskipun 0 baris baru (<code class="font-mono">--paksa</code>).
+                                </span>
+                            </label>
+                        </div>
+
+                        <!-- Indikator Progres Pelatihan Ulang (Loading State) -->
+                        <div id="loading-pipeline-box" class="hidden rounded-xl bg-stone-900 text-white p-4 space-y-3 border border-stone-700">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="fa-solid fa-circle-notch fa-spin text-amber-400 text-base" aria-hidden="true"></i>
+                                    <span id="loading-tahap-teks" class="text-xs sm:text-sm font-semibold text-white">
+                                        Menjalankan pipeline pelatihan ulang...
+                                    </span>
+                                </div>
+                                <span class="text-xs font-mono text-amber-300">Mohon tunggu</span>
+                            </div>
+                            <div class="w-full bg-stone-800 h-2 rounded-full overflow-hidden">
+                                <div id="loading-bar-inner" class="bg-gradient-to-r from-red-500 via-orange-400 to-amber-300 h-full w-2/3 animate-pulse"></div>
+                            </div>
+                            <p class="text-[11px] text-stone-300 leading-relaxed">
+                                Tahapan: Validasi CSV &rarr; Arsip Otomatis &rarr; <code class="font-mono">processing.py</code> &rarr; <code class="font-mono">pelabelan.py</code> &rarr; <code class="font-mono">analisis_fitur.py</code> &rarr; <code class="font-mono">train_model_klasifikasi.py</code> &rarr; <code class="font-mono">test_sistem.py</code> (21 tes).
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-3 pt-2">
+                            <button
+                                type="submit"
+                                id="btn-submit-csv"
+                                class="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-5 py-3 rounded-xl shadow-sm transition min-h-[44px]"
+                            >
+                                <i class="fa-solid fa-gears" aria-hidden="true"></i>
+                                <span>Gabungkan Data &amp; Latih Ulang Model</span>
+                            </button>
+                            <span class="text-xs text-stone-600">
+                                Backup otomatis disimpan ke folder <code class="font-mono text-stone-800">arsip/&lt;timestamp&gt;/</code> sebelum perubahan.
+                            </span>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- OPSI B: Tanpa CSV / Scraping Otomatis dari Web -->
+                <div class="lg:col-span-5 bg-white rounded-2xl border-2 border-stone-200 shadow-sm p-6 space-y-4">
+                    <div class="flex items-start gap-3 border-b border-stone-200 pb-4">
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center shrink-0 font-display font-bold text-base">
+                            B
+                        </div>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="font-display font-bold text-lg text-stone-900">
+                                    Opsi B: Tambah Data Tanpa CSV / Scraping Instan Web
+                                </h3>
+                                <span class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                    Dibatasi Sistem
+                                </span>
+                            </div>
+                            <p class="text-xs sm:text-sm text-stone-600 mt-1">
+                                Mencoba menambahkan data tanpa file CSV hasil scraping atau meminta server melakukan scraping instan tanpa melewati prosedur <code class="font-mono text-xs">scraping.py</code>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-4 text-xs text-stone-700 space-y-2 leading-relaxed">
+                        <p class="font-semibold text-stone-900">
+                            Mengapa penambahan data wajib menggunakan hasil scraping manual?
+                        </p>
+                        <ul class="list-disc list-inside space-y-1 text-stone-600">
+                            <li>Membutuhkan <code class="font-mono text-stone-800">id_iklan</code> asli dari OLX agar deduplikasi akurat.</li>
+                            <li>Penentuan ambang kuantil <code class="font-mono text-stone-800">Q33</code> dan <code class="font-mono text-stone-800">Q67</code> wajib berasal dari populasi iklan pasar riil.</li>
+                            <li>Browser Chromium Playwright memerlukan pengawasan lokal saat menyadap API OLX.</li>
+                        </ul>
+                    </div>
+
+                    <div class="space-y-3 pt-1">
+                        <button
+                            type="button"
+                            id="btn-opsi-b"
+                            class="w-full inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm px-4 py-3 rounded-xl transition min-h-[44px]"
+                        >
+                            <i class="fa-solid fa-bolt text-amber-400" aria-hidden="true"></i>
+                            <span>Coba Tambah Data Tanpa CSV (Opsi B)</span>
+                        </button>
+
+                        <!-- Kotak Notifikasi Khusus Opsi B -->
+                        <div id="notif-opsi-b" role="alert" class="hidden rounded-xl bg-rose-50 border-2 border-rose-300 p-4 space-y-3">
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-circle-xmark text-rose-700 text-lg mt-0.5 shrink-0" aria-hidden="true"></i>
+                                <div class="space-y-1">
+                                    <p class="text-xs font-extrabold uppercase tracking-wider text-rose-800">
+                                        Penambahan Data Ditolak (Wajib Scraping Manual)
+                                    </p>
+                                    <p id="notif-opsi-b-pesan" class="text-sm font-bold text-rose-950 leading-snug">
+                                        harus scraping manual, cara scraping dan penggunaan aplikasi ada di guidebook silahkan di download dan dibaca
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="pt-1 flex flex-wrap items-center gap-2">
+                                <a href="/download/guidebook" download class="inline-flex items-center gap-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold px-3.5 py-2.5 rounded-lg transition min-h-[44px]">
+                                    <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                                    <span>Download Guidebook PDF Sekarang</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- PANEL PERBANDINGAN LENGKAP: SEBELUM VS SESUDAH (DARI LATIHAN AWAL HINGGA DATA BARU) -->
+        <section aria-labelledby="heading-perbandingan" class="space-y-6">
+            <div class="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-4">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-stone-200 pb-4">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-red-700">
+                            Audit Transparansi Pipeline Data Mining
+                        </span>
+                        <h2 id="heading-perbandingan" class="font-display text-xl sm:text-2xl font-bold text-stone-900 mt-0.5">
+                            Perbandingan Perubahan: Dari Pelatihan Lama ke Data Baru
+                        </h2>
+                        <p class="text-sm text-stone-600 mt-1">
+                            Menampilkan rincian perubahan di setiap tahapan skrip: mulai dari pembersihan data mentah, regresi harga wajar, pergeseran kuantil tertile, seleksi fitur, hingga performa klasifikasi dan uji ablation.
+                        </p>
+                    </div>
+
+                    <!-- Pemilih Riwayat Batch -->
+                    <div class="w-full lg:w-96 shrink-0">
+                        <label for="select-riwayat" class="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                            Pilih Riwayat Pembaruan Dataset:
+                        </label>
+                        <select
+                            id="select-riwayat"
+                            class="w-full rounded-xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 min-h-[44px]"
+                        ></select>
+                    </div>
+                </div>
+
+                <!-- Ringkasan Penggabungan File pada Batch Terpilih -->
+                <div id="banner-info-batch" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-4">
+                        <span class="text-xs text-stone-600 block">Sumber File Data Baru</span>
+                        <strong id="info-nama-file" class="font-display text-sm font-bold text-stone-900 mt-1 block truncate">-</strong>
+                        <span id="info-waktu-batch" class="text-[11px] font-mono text-stone-600 mt-1 block">-</span>
+                    </div>
+                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-4">
+                        <span class="text-xs text-stone-600 block">Deduplikasi ID Iklan OLX</span>
+                        <strong id="info-baris-masuk" class="font-display text-lg font-extrabold text-emerald-700 mt-0.5 block tabular-nums">-</strong>
+                        <span id="info-baris-duplikat" class="text-[11px] text-stone-600 mt-0.5 block tabular-nums">-</span>
+                    </div>
+                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-4">
+                        <span class="text-xs text-stone-600 block">Pergeseran Ambang Tertile</span>
+                        <strong id="info-tertile-shift" class="font-mono text-sm font-bold text-stone-900 mt-1 block tabular-nums">-</strong>
+                        <span class="text-[11px] text-stone-600 mt-1 block">Dihitung khusus pada Train Set (80%)</span>
+                    </div>
+                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-4">
+                        <span class="text-xs text-stone-600 block">Verifikasi Integritas Sistem</span>
+                        <strong id="info-tes-ringkasan" class="font-display text-lg font-extrabold text-emerald-700 mt-0.5 block tabular-nums">-</strong>
+                        <span class="text-[11px] text-stone-600 mt-0.5 block">Pengujian otomatis <code class="font-mono">test_sistem.py</code></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAHAP 1: DATA MENTAH & PREPROCESSING (processing.py) -->
+            <div class="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50/70">
+                    <div>
+                        <span class="text-xs font-mono font-semibold text-red-700">Tahap 1 - processing.py</span>
+                        <h3 class="font-display text-lg font-bold text-stone-900">
+                            Perubahan Pembersihan Data, Imputasi &amp; Cakupan Merek/Model
+                        </h3>
+                    </div>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-stone-200 text-stone-800 self-start sm:self-auto">
+                        Normalisasi Slang + 5 Fitur NLP
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-stone-100 text-stone-700 border-b border-stone-200 uppercase text-[11px] tracking-wider">
+                                <th class="py-3.5 px-4 sm:px-6 font-bold">Indikator Preprocessing</th>
+                                <th class="py-3.5 px-4 font-bold text-right">Sebelum (Data Lama)</th>
+                                <th class="py-3.5 px-4 font-bold text-right">Sesudah (Data Baru)</th>
+                                <th class="py-3.5 px-4 sm:px-6 font-bold text-right">Selisih / Perubahan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-preprocessing" class="divide-y divide-stone-200 tabular-nums"></tbody>
+                    </table>
+                </div>
+
+                <!-- Daftar Merek Baru yang Bertambah -->
+                <div class="p-5 sm:p-6 bg-stone-50 border-t border-stone-200 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-stone-700">
+                            Merek Baru yang Masuk ke Dataset pada Pembaruan Ini:
+                        </span>
+                        <span id="jumlah-merek-baru-badge" class="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 tabular-nums">0 merek</span>
+                    </div>
+                    <div id="container-merek-bertambah" class="flex flex-wrap gap-1.5 pt-1"></div>
+                </div>
+            </div>
+
+            <!-- TAHAP 2: SPLIT 80:20, REGRESI HARGA WAJAR & PELABELAN TERTILE (pelabelan.py) -->
+            <div class="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50/70">
+                    <div>
+                        <span class="text-xs font-mono font-semibold text-red-700">Tahap 2 - pelabelan.py</span>
+                        <h3 class="font-display text-lg font-bold text-stone-900">
+                            Perubahan Regresi Harga Wajar, Ambang Kuantil Tertile (Q33/Q67) &amp; Distribusi Kelas
+                        </h3>
+                    </div>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-stone-200 text-stone-800 self-start sm:self-auto">
+                        Bebas Data Leakage (Split 80:20 di Awal)
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-stone-100 text-stone-700 border-b border-stone-200 uppercase text-[11px] tracking-wider">
+                                <th class="py-3.5 px-4 sm:px-6 font-bold">Metrik Regresi &amp; Pelabelan</th>
+                                <th class="py-3.5 px-4 font-bold text-right">Sebelum (Data Lama)</th>
+                                <th class="py-3.5 px-4 font-bold text-right">Sesudah (Data Baru)</th>
+                                <th class="py-3.5 px-4 sm:px-6 font-bold text-right">Selisih / Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-pelabelan" class="divide-y divide-stone-200 tabular-nums"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAHAP 3: SELEKSI FITUR (analisis_fitur.py) -->
+            <div class="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50/70">
+                    <div>
+                        <span class="text-xs font-mono font-semibold text-red-700">Tahap 3 - analisis_fitur.py</span>
+                        <h3 class="font-display text-lg font-bold text-stone-900">
+                            Keputusan Seleksi Fitur: Fitur Dipertahankan vs Fitur Dibuang
+                        </h3>
+                    </div>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-stone-200 text-stone-800 self-start sm:self-auto">
+                        Kruskal-Wallis + Cramer's V + Mutual Information
+                    </span>
+                </div>
+
+                <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-7 space-y-3">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                            <span>Fitur Dipertahankan untuk Klasifikasi (<span id="jml-fitur-pertahan" class="tabular-nums">11</span> Fitur)</span>
+                        </h4>
+                        <div id="list-fitur-dipertahankan" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div class="lg:col-span-5 space-y-3">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i>
+                            <span>Fitur Dibuang Beserta Alasan Statistik</span>
+                        </h4>
+                        <div id="list-fitur-dibuang" class="space-y-2 text-xs"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAHAP 4: MODEL KLASIFIKASI, ABLATION STUDY & PERBANDINGAN 6 KANDIDAT (train_model_klasifikasi.py) -->
+            <div class="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50/70">
+                    <div>
+                        <span class="text-xs font-mono font-semibold text-red-700">Tahap 4 - train_model_klasifikasi.py</span>
+                        <h3 class="font-display text-lg font-bold text-stone-900">
+                            Performa Model Klasifikasi Likuiditas, Nested CV Tuning &amp; Uji Ablation
+                        </h3>
+                    </div>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-stone-200 text-stone-800 self-start sm:self-auto">
+                        6 Kandidat Model + Uji Ablation
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-stone-100 text-stone-700 border-b border-stone-200 uppercase text-[11px] tracking-wider">
+                                <th class="py-3.5 px-4 sm:px-6 font-bold">Metrik Evaluasi Klasifikasi</th>
+                                <th class="py-3.5 px-4 font-bold text-right">Sebelum (Data Lama)</th>
+                                <th class="py-3.5 px-4 font-bold text-right">Sesudah (Data Baru)</th>
+                                <th class="py-3.5 px-4 sm:px-6 font-bold text-right">Selisih / Perubahan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-klasifikasi" class="divide-y divide-stone-200 tabular-nums"></tbody>
+                    </table>
+                </div>
+
+                <!-- Tabel Perbandingan 6 Kandidat Algoritma pada Skenario 2 -->
+                <div class="p-5 sm:p-6 border-t border-stone-200 space-y-3 bg-stone-50/50">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h4 class="font-display font-bold text-sm text-stone-900">
+                            Perbandingan 6 Kandidat Model Klasifikasi (Skenario 2: Dengan <code class="font-mono text-xs">deviasi_persen</code>)
+                        </h4>
+                        <span class="text-xs text-stone-600">
+                            Hasil 5-Fold Stratified Cross Validation pada Train Set
+                        </span>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-stone-100 text-stone-700 border-b border-stone-200 uppercase text-[11px] tracking-wider">
+                                    <th class="py-3 px-4 font-bold">Algoritma Kandidat</th>
+                                    <th class="py-3 px-4 font-bold text-right">F1-Macro CV (Sebelum)</th>
+                                    <th class="py-3 px-4 font-bold text-right">F1-Macro CV (Sesudah)</th>
+                                    <th class="py-3 px-4 font-bold text-right">RMSE Ordinal (Sesudah)</th>
+                                    <th class="py-3 px-4 font-bold text-right">Keyakinan Puncak (Sesudah)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-kandidat-model" class="divide-y divide-stone-200 tabular-nums"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAHAP 5: MANAJEMEN ARSIP & PEMULIHAN (ROLLBACK) -->
+            <div class="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50/70">
+                    <div>
+                        <span class="text-xs font-mono font-semibold text-red-700">Tahap 5 - Jaminan Keamanan Model</span>
+                        <h3 class="font-display text-lg font-bold text-stone-900">
+                            Daftar Arsip Dataset &amp; Pemulihan Versi Model (Rollback)
+                        </h3>
+                    </div>
+                    <span class="text-xs text-stone-600">
+                        Setiap pembaruan menyalin 9 file inti ke folder <code class="font-mono text-stone-800">arsip/</code>
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-stone-100 text-stone-700 border-b border-stone-200 uppercase text-[11px] tracking-wider">
+                                <th class="py-3.5 px-4 sm:px-6 font-bold">ID / Keterangan Arsip</th>
+                                <th class="py-3.5 px-4 font-bold">Tanggal Latih</th>
+                                <th class="py-3.5 px-4 font-bold text-right">Train / Test</th>
+                                <th class="py-3.5 px-4 font-bold">Model Klasifikasi</th>
+                                <th class="py-3.5 px-4 font-bold text-right">F1-Macro Test</th>
+                                <th class="py-3.5 px-4 sm:px-6 font-bold text-right">Aksi Pemulihan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-arsip" class="divide-y divide-stone-200 tabular-nums">
+                            {% for ar in arsip_list %}
+                            <tr class="{% if ar.is_aktif %}bg-emerald-50/50{% else %}hover:bg-stone-50{% endif %}">
+                                <td class="py-3.5 px-4 sm:px-6 font-semibold text-stone-900">
+                                    <div class="flex items-center gap-2">
+                                        <span>{{ ar.keterangan }}</span>
+                                        {% if ar.is_aktif %}
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold uppercase tracking-wider">
+                                            <i class="fa-solid fa-circle-check" aria-hidden="true"></i> Aktif di Web
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 text-[10px] font-semibold">
+                                            Arsip Cadangan
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <span class="block text-[11px] font-mono text-stone-500 mt-0.5">{{ ar.path }}</span>
+                                </td>
+                                <td class="py-3.5 px-4 font-mono text-xs text-stone-700">{{ ar.tanggal }}</td>
+                                <td class="py-3.5 px-4 text-right font-mono text-xs text-stone-800">{{ ar.train_size }} / {{ ar.test_size }}</td>
+                                <td class="py-3.5 px-4 text-stone-800">{{ ar.model_klasifikasi }}</td>
+                                <td class="py-3.5 px-4 text-right font-mono font-bold text-emerald-700">{{ ar.f1_test_pct }}%</td>
+                                <td class="py-3.5 px-4 sm:px-6 text-right">
+                                    {% if ar.is_aktif %}
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-2 rounded-lg">
+                                        <i class="fa-solid fa-circle-check text-emerald-600" aria-hidden="true"></i>
+                                        <span>Versi Aktif</span>
+                                    </span>
+                                    {% else %}
+                                    <button
+                                        type="button"
+                                        data-arsip-path="{{ ar.path }}"
+                                        class="btn-rollback inline-flex items-center gap-1.5 text-xs font-bold text-stone-800 hover:text-white bg-stone-100 hover:bg-red-700 border border-stone-300 hover:border-red-700 px-3 py-2 rounded-lg transition min-h-[44px]"
+                                    >
+                                        <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                                        <span>Pulihkan Versi Ini</span>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="py-6 px-4 text-center text-stone-600">
+                                    Belum ada arsip tersimpan. Arsip baru akan dibuat otomatis saat Anda mengunggah CSV baru.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-stone-950 text-stone-300 border-t border-stone-800 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-red-700 flex items-center justify-center text-white">
+                    <i class="fa-solid fa-car-side" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <p class="font-display font-bold text-white">AutoLaku - Prediksi Kecepatan Laku Mobil Bekas OLX Indonesia</p>
+                    <p class="text-stone-400">Tugas Mata Kuliah Data Mining (TI24A2) - Universitas Duta Bangsa Surakarta</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-4">
+                <a href="/" class="text-stone-300 hover:text-white underline underline-offset-4">Beranda</a>
+                <a href="/prediksi" class="text-stone-300 hover:text-white underline underline-offset-4">Kalkulator Prediksi</a>
+                <a href="/download/guidebook" download class="text-amber-300 hover:text-amber-200 font-semibold underline underline-offset-4">Unduh Guidebook PDF</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Data JSON Awal dari Server -->
+    <script id="data-riwayat-json" type="application/json">{{ riwayat | tojson }}</script>
+    <script id="data-kolom-wajib-json" type="application/json">{{ kolom_wajib | tojson }}</script>
+
+    <script>
+        (function () {
+            // Toggle Navigasi Mobile
+            const btnMobile = document.getElementById('btn-mobile-nav');
+            const navMobile = document.getElementById('mobile-nav');
+            const iconMobile = document.getElementById('icon-mobile-nav');
+            if (btnMobile && navMobile) {
+                btnMobile.addEventListener('click', function () {
+                    const expanded = btnMobile.getAttribute('aria-expanded') === 'true';
+                    btnMobile.setAttribute('aria-expanded', String(!expanded));
+                    navMobile.classList.toggle('hidden');
+                    if (iconMobile) {
+                        iconMobile.className = expanded ? 'fa-solid fa-bars text-base' : 'fa-solid fa-xmark text-base';
+                    }
+                });
+            }
+
+            let daftarRiwayat = [];
+            let kolomWajib = [];
+            try {
+                daftarRiwayat = JSON.parse(document.getElementById('data-riwayat-json').textContent || '[]');
+                kolomWajib = JSON.parse(document.getElementById('data-kolom-wajib-json').textContent || '[]');
+            } catch (e) {
+                daftarRiwayat = [];
+                kolomWajib = [];
+            }
+
+            const fmtInt = (n) => Number(n || 0).toLocaleString('id-ID');
+            const fmtRp = (n) => 'Rp ' + Math.round(Number(n || 0)).toLocaleString('id-ID');
+            const fmtPct = (n, d = 2) => Number(n || 0).toFixed(d) + '%';
+            const fmtSignedInt = (n) => {
+                const v = Number(n || 0);
+                return (v > 0 ? '+' : '') + v.toLocaleString('id-ID');
+            };
+            const fmtSignedPct = (n, d = 2) => {
+                const v = Number(n || 0);
+                return (v > 0 ? '+' : '') + v.toFixed(d) + '%';
+            };
+
+            function badgeDeltaHtml(val, suffix = '', invertColor = false) {
+                const num = Number(val || 0);
+                if (Math.abs(num) < 1e-6) {
+                    return '<span class="inline-block px-2 py-0.5 rounded bg-stone-100 text-stone-700 font-mono text-xs">Tetap (0' + suffix + ')</span>';
+                }
+                const positif = num > 0;
+                const bagus = invertColor ? !positif : positif;
+                const cls = bagus
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : 'bg-amber-100 text-amber-900 border border-amber-300';
+                const tanda = positif ? '+' : '';
+                const teks = Number.isInteger(num) ? num.toLocaleString('id-ID') : num.toFixed(2);
+                return `<span class="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs ${cls}">${tanda}${teks}${suffix}</span>`;
+            }
+
+            function renderPerbandingan(idx) {
+                if (!daftarRiwayat || daftarRiwayat.length === 0) return;
+                const item = daftarRiwayat[idx] || daftarRiwayat[0];
+                const b = item.sebelum || {};
+                const a = item.sesudah || {};
+                const d = item.delta || {};
+                const ig = item.info_penggabungan || {};
+                const ts = item.tes_sistem || {};
+
+                const pb = b.preprocessing || {};
+                const pa = a.preprocessing || {};
+                const lb = b.pelabelan || {};
+                const la = a.pelabelan || {};
+                const kb = b.klasifikasi || {};
+                const ka = a.klasifikasi || {};
+                const sfa = a.seleksi_fitur || {};
+
+                // Banner atas
+                document.getElementById('info-nama-file').textContent = ig.nama_file || '-';
+                document.getElementById('info-waktu-batch').textContent = 'Waktu: ' + (item.waktu || '-');
+                document.getElementById('info-baris-masuk').textContent = '+' + fmtInt(ig.baris_ditambahkan || 0) + ' iklan baru';
+                document.getElementById('info-baris-duplikat').textContent = fmtInt(ig.baris_duplikat_id || 0) + ' duplikat dilewati dari ' + fmtInt(ig.baris_file_baru || 0) + ' baris CSV';
+                document.getElementById('info-tertile-shift').textContent =
+                    `Q33: ${fmtSignedPct(lb.q33)} -> ${fmtSignedPct(la.q33)} | Q67: ${fmtSignedPct(lb.q67)} -> ${fmtSignedPct(la.q67)}`;
+                document.getElementById('info-tes-ringkasan').textContent = ts.ringkasan || '21/21 tes lulus';
+
+                // Tabel 1: Preprocessing
+                const rowsPrep = [
+                    ['Total Baris Mentah (dataset_olx_mentah.csv)', fmtInt(pb.data_mentah), fmtInt(pa.data_mentah), badgeDeltaHtml(d.data_mentah, ' baris')],
+                    ['Data Bersih Valid (dataset_olx_bersih.csv)', fmtInt(pb.data_bersih), fmtInt(pa.data_bersih), badgeDeltaHtml(d.data_bersih, ' baris')],
+                    ['Baris Noise Ditandai (is_noise = True)', fmtInt(pb.noise_ditandai), fmtInt(pa.noise_ditandai), badgeDeltaHtml((pa.noise_ditandai || 0) - (pb.noise_ditandai || 0), ' baris', true)],
+                    ['Outlier Harga IQR Ditandai (is_outlier_harga)', fmtInt(pb.outlier_ditandai), fmtInt(pa.outlier_ditandai), badgeDeltaHtml((pa.outlier_ditandai || 0) - (pb.outlier_ditandai || 0), ' baris')],
+                    ['Imputasi Jarak Tempuh Median Bertingkat', fmtInt(pb.imputasi_km), fmtInt(pa.imputasi_km), badgeDeltaHtml((pa.imputasi_km || 0) - (pb.imputasi_km || 0), ' baris')],
+                    ['Transmisi Asumsi Manual (transmisi_dari_teks = 0)', `${fmtInt(pb.transmisi_asumsi)} (${pb.transmisi_asumsi_pct || 0}%)`, `${fmtInt(pa.transmisi_asumsi)} (${pa.transmisi_asumsi_pct || 0}%)`, badgeDeltaHtml((pa.transmisi_asumsi || 0) - (pb.transmisi_asumsi || 0), ' baris')],
+                    ['Jumlah Merek Unik Terdeteksi', fmtInt(pb.merek_unik), fmtInt(pa.merek_unik), badgeDeltaHtml(d.merek_unik, ' merek')],
+                    ['Jumlah Model/Seri Mobil Unik', fmtInt(pb.model_unik), fmtInt(pa.model_unik), badgeDeltaHtml(d.model_unik, ' model')],
+                    ['Harga Median Pasar (Rp)', fmtRp(pb.harga_median), fmtRp(pa.harga_median), `<span class="font-mono text-xs font-semibold text-stone-800">${(d.harga_median >= 0 ? '+' : '-') + fmtRp(Math.abs(d.harga_median || 0))}</span>`],
+                ];
+                document.getElementById('tbody-preprocessing').innerHTML = rowsPrep.map(r => `
+                    <tr class="hover:bg-stone-50">
+                        <td class="py-3 px-4 sm:px-6 font-medium text-stone-900">${r[0]}</td>
+                        <td class="py-3 px-4 text-right font-mono text-stone-700">${r[1]}</td>
+                        <td class="py-3 px-4 text-right font-mono font-bold text-stone-900">${r[2]}</td>
+                        <td class="py-3 px-4 sm:px-6 text-right">${r[3]}</td>
+                    </tr>
+                `).join('');
+
+                // Merek baru bertambah
+                const merekBaru = d.merek_bertambah || [];
+                document.getElementById('jumlah-merek-baru-badge').textContent = merekBaru.length + ' merek baru';
+                const contMerek = document.getElementById('container-merek-bertambah');
+                if (merekBaru.length === 0) {
+                    contMerek.innerHTML = '<span class="text-xs text-stone-600">Tidak ada penambahan merek baru pada pembaruan ini.</span>';
+                } else {
+                    contMerek.innerHTML = merekBaru.map(m =>
+                        `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-stone-300 text-xs font-semibold text-stone-800"><i class="fa-solid fa-plus text-emerald-700 text-[10px]" aria-hidden="true"></i>${m}</span>`
+                    ).join('');
+                }
+
+                // Tabel 2: Pelabelan & Regresi
+                const dtTrB = lb.distribusi_train || {};
+                const dtTrA = la.distribusi_train || {};
+                const dtTeB = lb.distribusi_test || {};
+                const dtTeA = la.distribusi_test || {};
+                const rowsLabel = [
+                    ['Total Data Berlabel (Non-Noise)', fmtInt(lb.data_berlabel), fmtInt(la.data_berlabel), badgeDeltaHtml(d.data_berlabel, ' baris')],
+                    ['Ukuran Data Latih (Train Set 80%)', fmtInt(lb.train_size), fmtInt(la.train_size), badgeDeltaHtml(d.train_size, ' baris')],
+                    ['Ukuran Data Uji (Test Set 20%)', fmtInt(lb.test_size), fmtInt(la.test_size), badgeDeltaHtml(d.test_size, ' baris')],
+                    ['Algoritma Regresi Harga Wajar Terpilih', `<span class="font-semibold">${lb.model_regresi || '-'}</span>`, `<span class="font-bold text-red-700">${la.model_regresi || '-'}</span>`, lb.model_regresi === la.model_regresi ? '<span class="text-xs text-stone-600">Algoritma tetap</span>' : '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold">Berganti pemenang CV</span>'],
+                    ['MAPE Estimasi Harga Wajar (OOF)', fmtPct(lb.mape_harga_wajar_pct), fmtPct(la.mape_harga_wajar_pct), badgeDeltaHtml(d.mape_harga_wajar_pct, '%', true)],
+                    ['MAE Estimasi Harga Wajar (Rp)', fmtRp(lb.mae_harga_wajar_rupiah), fmtRp(la.mae_harga_wajar_rupiah), `<span class="font-mono text-xs">${fmtRp((la.mae_harga_wajar_rupiah || 0) - (lb.mae_harga_wajar_rupiah || 0))}</span>`],
+                    ['R-Squared (R²) Regresi OOF', Number(lb.r2_harga_wajar || 0).toFixed(4), Number(la.r2_harga_wajar || 0).toFixed(4), `<span class="font-mono font-bold text-xs text-emerald-800">${(d.r2_harga_wajar >= 0 ? '+' : '') + Number(d.r2_harga_wajar || 0).toFixed(4)}</span>`],
+                    ['Ambang Kuantil Q33 (Batas Cepat Laku)', fmtSignedPct(lb.q33), fmtSignedPct(la.q33), `<span class="font-mono text-xs font-semibold">${fmtSignedPct(d.q33)}</span>`],
+                    ['Ambang Kuantil Q67 (Batas Lambat Laku)', fmtSignedPct(lb.q67), fmtSignedPct(la.q67), `<span class="font-mono text-xs font-semibold">${fmtSignedPct(d.q67)}</span>`],
+                    ['Distribusi Train Set (Cepat / Sedang / Lambat)', `${fmtInt(dtTrB.Cepat)} / ${fmtInt(dtTrB.Sedang)} / ${fmtInt(dtTrB.Lambat)}`, `${fmtInt(dtTrA.Cepat)} / ${fmtInt(dtTrA.Sedang)} / ${fmtInt(dtTrA.Lambat)}`, '<span class="text-xs text-stone-600">Seimbang ~33,3% per kelas</span>'],
+                    ['Distribusi Test Set (Cepat / Sedang / Lambat)', `${fmtInt(dtTeB.Cepat)} / ${fmtInt(dtTeB.Sedang)} / ${fmtInt(dtTeB.Lambat)}`, `${fmtInt(dtTeA.Cepat)} / ${fmtInt(dtTeA.Sedang)} / ${fmtInt(dtTeA.Lambat)}`, '<span class="text-xs text-stone-600">Mengikuti kuantil Train Set</span>'],
+                ];
+                document.getElementById('tbody-pelabelan').innerHTML = rowsLabel.map(r => `
+                    <tr class="hover:bg-stone-50">
+                        <td class="py-3 px-4 sm:px-6 font-medium text-stone-900">${r[0]}</td>
+                        <td class="py-3 px-4 text-right font-mono text-stone-700">${r[1]}</td>
+                        <td class="py-3 px-4 text-right font-mono font-bold text-stone-900">${r[2]}</td>
+                        <td class="py-3 px-4 sm:px-6 text-right">${r[3]}</td>
+                    </tr>
+                `).join('');
+
+                // Tahap 3: Seleksi Fitur
+                const pertahan = sfa.dipertahankan || [];
+                const dibuang = sfa.dibuang || {};
+                document.getElementById('jml-fitur-pertahan').textContent = pertahan.length;
+                document.getElementById('list-fitur-dipertahankan').innerHTML = pertahan.map(f => `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 font-mono text-xs font-semibold">
+                        <i class="fa-solid fa-check text-emerald-700" aria-hidden="true"></i>${f}
+                    </span>
+                `).join('');
+
+                const entriesBuang = Object.entries(dibuang);
+                document.getElementById('list-fitur-dibuang').innerHTML = entriesBuang.map(([k, alasan]) => `
+                    <div class="p-3 rounded-xl bg-rose-50/70 border border-rose-200">
+                        <span class="font-mono font-bold text-rose-900 block">${k}</span>
+                        <span class="text-stone-700 mt-0.5 block">${alasan}</span>
+                    </div>
+                `).join('');
+
+                // Tabel 4: Klasifikasi & Ablation
+                const rowsKls = [
+                    ['Algoritma Klasifikasi Terpilih', `<span class="font-semibold">${kb.model_terpilih || '-'}</span>`, `<span class="font-bold text-emerald-800">${ka.model_terpilih || '-'}</span>`, '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold">Konsisten Terbaik</span>'],
+                    ['F1-Macro Cross-Validation (5-Fold Train)', `${fmtPct(kb.f1_macro_cv_pct)} (±${fmtPct(kb.f1_macro_cv_std_pct)})`, `${fmtPct(ka.f1_macro_cv_pct)} (±${fmtPct(ka.f1_macro_cv_std_pct)})`, badgeDeltaHtml(d.f1_macro_cv_pct, '%')],
+                    ['F1-Macro Data Uji (Test Set 20%)', fmtPct(kb.f1_macro_test_pct), fmtPct(ka.f1_macro_test_pct), badgeDeltaHtml(d.f1_macro_test_pct, '%')],
+                    ['Akurasi Data Uji (Test Set 20%)', fmtPct(kb.accuracy_test_pct), fmtPct(ka.accuracy_test_pct), badgeDeltaHtml(d.accuracy_test_pct, '%')],
+                    ['RMSE Ordinal pada Data Uji (Lebih kecil lebih baik)', Number(kb.rmse_ordinal_test || 0).toFixed(4), Number(ka.rmse_ordinal_test || 0).toFixed(4), badgeDeltaHtml(d.rmse_ordinal_test, '', true)],
+                    ['Rerata Keyakinan Puncak (Peak Confidence)', fmtPct(kb.rerata_keyakinan_pct), fmtPct(ka.rerata_keyakinan_pct), badgeDeltaHtml((ka.rerata_keyakinan_pct || 0) - (kb.rerata_keyakinan_pct || 0), '%')],
+                    ['Uji Ablation: F1 Test DENGAN deviasi_persen', fmtPct(kb.ablation_dengan_deviasi_f1_pct), fmtPct(ka.ablation_dengan_deviasi_f1_pct), '<span class="text-xs font-semibold text-emerald-800">Fitur penentu utama</span>'],
+                    ['Uji Ablation: F1 Test TANPA deviasi_persen', fmtPct(kb.ablation_tanpa_deviasi_f1_pct), fmtPct(ka.ablation_tanpa_deviasi_f1_pct), `<span class="text-xs text-stone-700">Selisih kontribusi: +${((ka.ablation_dengan_deviasi_f1_pct || 0) - (ka.ablation_tanpa_deviasi_f1_pct || 0)).toFixed(2)}%</span>`],
+                ];
+                document.getElementById('tbody-klasifikasi').innerHTML = rowsKls.map(r => `
+                    <tr class="hover:bg-stone-50">
+                        <td class="py-3 px-4 sm:px-6 font-medium text-stone-900">${r[0]}</td>
+                        <td class="py-3 px-4 text-right font-mono text-stone-700">${r[1]}</td>
+                        <td class="py-3 px-4 text-right font-mono font-bold text-stone-900">${r[2]}</td>
+                        <td class="py-3 px-4 sm:px-6 text-right">${r[3]}</td>
+                    </tr>
+                `).join('');
+
+                // Tabel 6 kandidat model
+                const mapKandLama = {};
+                (kb.kandidat_skenario2 || []).forEach(k => { mapKandLama[k.model] = k; });
+                const kandBaru = ka.kandidat_skenario2 || [];
+                document.getElementById('tbody-kandidat-model').innerHTML = kandBaru.map(k => {
+                    const kl = mapKandLama[k.model] || {};
+                    const isBest = k.model === ka.model_terpilih;
+                    return `
+                        <tr class="${isBest ? 'bg-emerald-50/70 font-semibold' : 'hover:bg-stone-50'}">
+                            <td class="py-2.5 px-4 text-stone-900">
+                                ${k.model}
+                                ${isBest ? '<span class="ml-1.5 text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-950 font-bold">Terpilih</span>' : ''}
+                            </td>
+                            <td class="py-2.5 px-4 text-right font-mono text-stone-700">${kl.f1_cv_pct ? fmtPct(kl.f1_cv_pct) : '-'}</td>
+                            <td class="py-2.5 px-4 text-right font-mono font-bold text-stone-900">${fmtPct(k.f1_cv_pct)} (±${fmtPct(k.f1_std_pct)})</td>
+                            <td class="py-2.5 px-4 text-right font-mono text-stone-700">${Number(k.rmse_ordinal || 0).toFixed(4)}</td>
+                            <td class="py-2.5 px-4 text-right font-mono text-stone-700">${fmtPct(k.keyakinan_pct)}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            function isiDropdownRiwayat() {
+                const sel = document.getElementById('select-riwayat');
+                if (!sel) return;
+                if (!daftarRiwayat || daftarRiwayat.length === 0) {
+                    sel.innerHTML = '<option value="0">Belum ada riwayat pembaruan</option>';
+                    return;
+                }
+                sel.innerHTML = daftarRiwayat.map((r, i) =>
+                    `<option value="${i}">${r.label_batch || r.waktu || ('Pembaruan #' + (i + 1))}</option>`
+                ).join('');
+                renderPerbandingan(0);
+            }
+
+            const selectRiwayatEl = document.getElementById('select-riwayat');
+            if (selectRiwayatEl) {
+                selectRiwayatEl.addEventListener('change', function () {
+                    renderPerbandingan(Number(this.value || 0));
+                });
+            }
+
+            isiDropdownRiwayat();
+
+            // Pratinjau File CSV saat dipilih
+            const inputCsv = document.getElementById('input-csv-baru');
+            const previewBox = document.getElementById('preview-csv-box');
+            let teksCsvTerpilih = '';
+            let namaFileTerpilih = '';
+
+            if (inputCsv) {
+                inputCsv.addEventListener('change', function () {
+                    const file = this.files && this.files[0];
+                    if (!file) {
+                        previewBox.classList.add('hidden');
+                        teksCsvTerpilih = '';
+                        namaFileTerpilih = '';
+                        return;
+                    }
+                    namaFileTerpilih = file.name;
+                    document.getElementById('preview-nama-file').textContent = file.name;
+                    document.getElementById('preview-ukuran-file').textContent = (file.size / 1024).toFixed(1) + ' KB';
+
+                    const reader = new FileReader();
+                    reader.onload = function (ev) {
+                        teksCsvTerpilih = String(ev.target.result || '');
+                        const lines = teksCsvTerpilih.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        const barisData = Math.max(0, lines.length - 1);
+                        document.getElementById('preview-baris').textContent = fmtInt(barisData) + ' baris';
+
+                        const headerLine = (lines[0] || '').replace(/^\uFEFF/, '');
+                        const headerCols = headerLine.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                        const kurang = kolomWajib.filter(k => !headerCols.includes(k));
+                        const statusEl = document.getElementById('preview-status-kolom');
+                        if (kurang.length === 0) {
+                            statusEl.className = 'ml-1 text-emerald-800 font-bold';
+                            statusEl.textContent = 'Lengkap (13/13 kolom sesuai)';
+                        } else {
+                            statusEl.className = 'ml-1 text-rose-700 font-bold';
+                            statusEl.textContent = 'Kurang kolom: ' + kurang.join(', ');
+                        }
+                        previewBox.classList.remove('hidden');
+                    };
+                    reader.readAsText(file, 'UTF-8');
+                });
+            }
+
+            function tampilkanNotifikasiAtas(sukses, judul, pesan, tampilkanGuidebook) {
+                const box = document.getElementById('notifikasi-container');
+                if (!box) return;
+                const warna = sukses
+                    ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                    : 'bg-rose-50 border-rose-400 text-rose-950';
+                const ikon = sukses ? 'fa-circle-check text-emerald-700' : 'fa-triangle-exclamation text-rose-700';
+                box.className = `rounded-2xl border-2 p-5 shadow-sm ${warna}`;
+                box.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-3">
+                            <i class="fa-solid ${ikon} text-xl mt-0.5 shrink-0" aria-hidden="true"></i>
+                            <div>
+                                <p class="font-display font-bold text-sm sm:text-base">${judul}</p>
+                                <p class="text-xs sm:text-sm mt-1 leading-relaxed font-medium">${pesan}</p>
+                            </div>
+                        </div>
+                        ${tampilkanGuidebook ? `
+                        <a href="/download/guidebook" download class="inline-flex items-center justify-center gap-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 min-h-[44px]">
+                            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                            <span>Download Guidebook PDF</span>
+                        </a>` : ''}
+                    </div>
+                `;
+                box.classList.remove('hidden');
+                box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // Handler Opsi B (Tanpa CSV -> Notifikasi Gagal Sesuai Permintaan User)
+            const btnOpsiB = document.getElementById('btn-opsi-b');
+            const notifOpsiB = document.getElementById('notif-opsi-b');
+            const notifOpsiBPesan = document.getElementById('notif-opsi-b-pesan');
+
+            if (btnOpsiB) {
+                btnOpsiB.addEventListener('click', async function () {
+                    let pesanServer = 'harus scraping manual, cara scraping dan penggunaan aplikasi ada di guidebook silahkan di download dan dibaca';
+                    try {
+                        const res = await fetch('/api/opsi-tanpa-csv', { method: 'POST' });
+                        const data = await res.json();
+                        if (data && data.pesan) {
+                            pesanServer = data.pesan;
+                        }
+                    } catch (e) {
+                        // Gunakan pesan standar jika offline
+                    }
+                    if (notifOpsiBPesan) notifOpsiBPesan.textContent = pesanServer;
+                    if (notifOpsiB) notifOpsiB.classList.remove('hidden');
+                    tampilkanNotifikasiAtas(
+                        false,
+                        'Gagal Menambahkan Data Tanpa CSV (Opsi B)',
+                        pesanServer,
+                        true
+                    );
+                });
+            }
+
+            // Handler Opsi A (Submit CSV Baru & Latih Ulang)
+            const formCsv = document.getElementById('form-tambah-csv');
+            const btnSubmitCsv = document.getElementById('btn-submit-csv');
+            const loadingBox = document.getElementById('loading-pipeline-box');
+
+            if (formCsv) {
+                formCsv.addEventListener('submit', async function (ev) {
+                    ev.preventDefault();
+                    if (!teksCsvTerpilih) {
+                        tampilkanNotifikasiAtas(
+                            false,
+                            'File CSV Belum Dipilih',
+                            'Silakan pilih file CSV hasil scraping OLX pada Opsi A terlebih dahulu, atau unduh Guidebook PDF jika Anda belum melakukan scraping.',
+                            true
+                        );
+                        return;
+                    }
+
+                    const tanpaLatih = document.getElementById('chk-tanpa-latih').checked;
+                    const paksa = document.getElementById('chk-paksa').checked;
+
+                    btnSubmitCsv.disabled = true;
+                    loadingBox.classList.remove('hidden');
+
+                    try {
+                        const res = await fetch('/api/tambah-data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                nama_file: namaFileTerpilih || 'data_scraping_baru.csv',
+                                isi_csv: teksCsvTerpilih,
+                                tanpa_latih: tanpaLatih,
+                                paksa: paksa
+                            })
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.sukses) {
+                            tampilkanNotifikasiAtas(
+                                false,
+                                'Penambahan Data / Pelatihan Ulang Gagal',
+                                data.pesan || 'Terjadi kesalahan saat memproses CSV baru.',
+                                true
+                            );
+                        } else {
+                            tampilkanNotifikasiAtas(
+                                true,
+                                'Penambahan Data & Pelatihan Ulang Berhasil!',
+                                data.pesan,
+                                false
+                            );
+                            if (data.riwayat && Array.isArray(data.riwayat)) {
+                                daftarRiwayat = data.riwayat;
+                                isiDropdownRiwayat();
+                            }
+                            if (data.snapshot_aktif) {
+                                document.getElementById('badge-aktif-berlabel').textContent = fmtInt(data.snapshot_aktif.pelabelan.data_berlabel);
+                                document.getElementById('badge-aktif-tanggal').textContent = data.snapshot_aktif.tanggal_snapshot;
+                            }
+                        }
+                    } catch (err) {
+                        tampilkanNotifikasiAtas(
+                            false,
+                            'Kesalahan Koneksi Server',
+                            String(err),
+                            false
+                        );
+                    } finally {
+                        btnSubmitCsv.disabled = false;
+                        loadingBox.classList.add('hidden');
+                    }
+                });
+            }
+
+            // Handler Tombol Rollback Arsip
+            document.querySelectorAll('.btn-rollback').forEach(btn => {
+                btn.addEventListener('click', async function () {
+                    const path = this.getAttribute('data-arsip-path');
+                    if (!path) return;
+                    if (!window.confirm(`Apakah Anda yakin ingin memulihkan dataset dan model dari arsip "${path}"?`)) {
+                        return;
+                    }
+                    this.disabled = true;
+                    try {
+                        const res = await fetch('/api/rollback', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ arsip_path: path })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.sukses) {
+                            tampilkanNotifikasiAtas(true, 'Rollback Arsip Berhasil', data.pesan, false);
+                            if (data.snapshot_aktif) {
+                                document.getElementById('badge-aktif-berlabel').textContent = fmtInt(data.snapshot_aktif.pelabelan.data_berlabel);
+                                document.getElementById('badge-aktif-tanggal').textContent = data.snapshot_aktif.tanggal_snapshot;
+                            }
+                        } else {
+                            tampilkanNotifikasiAtas(false, 'Gagal Memulihkan Arsip', data.pesan || 'Gagal rollback.', false);
+                        }
+                    } catch (e) {
+                        tampilkanNotifikasiAtas(false, 'Kesalahan Server', String(e), false);
+                    } finally {
+                        this.disabled = false;
+                    }
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
+

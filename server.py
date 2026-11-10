@@ -13,7 +13,7 @@ import json
 import string
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, Request, Query, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -26,6 +26,11 @@ from processing import (
     AMBANG_KEYAKINAN_SAMPEL, NEGASI, NEGASI_RIWAYAT,
     POLA_GARANSI, POLA_RIWAYAT_NEGATIF, POLA_CATATAN_SERVIS,
     POLA_PAJAK_HIDUP, POLA_KREDIT, ekstrak_fitur_teks
+)
+from tambah_data import (
+    ambil_snapshot_lengkap, muat_riwayat, daftar_arsip,
+    pulihkan_arsip, tambah_dan_latih, pastikan_guidebook_pdf,
+    KOLOM_WAJIB_RAW
 )
 
 # Inisialisasi FastAPI
@@ -56,6 +61,22 @@ df_pilihan = df_pilihan_raw[
 meta_pelabelan = sistem.get("meta", {})
 Q33_TERTILE = float(meta_pelabelan.get("q33", meta_pelabelan.get("q33_tertile", -7.2695)))
 Q67_TERTILE = float(meta_pelabelan.get("q67", meta_pelabelan.get("q67_tertile", 6.5131)))
+
+# Pastikan file PDF Guidebook tersedia di static/guidebook_autolaku.pdf
+pastikan_guidebook_pdf()
+
+
+def segarkan_sistem() -> None:
+    """Memuat ulang model, dataset, dan metadata ke memori setelah pelatihan ulang atau rollback."""
+    global sistem, df_pilihan_raw, df_pilihan, meta_pelabelan, Q33_TERTILE, Q67_TERTILE
+    sistem = muat_sistem()
+    df_pilihan_raw = daftar_pilihan(sistem)
+    df_pilihan = df_pilihan_raw[
+        ~df_pilihan_raw['merek'].fillna('').str.strip().str.lower().isin(MEREK_ANOMALI_DIKECUALIKAN)
+    ].reset_index(drop=True)
+    meta_pelabelan = sistem.get("meta", {})
+    Q33_TERTILE = float(meta_pelabelan.get("q33", meta_pelabelan.get("q33_tertile", -7.2695)))
+    Q67_TERTILE = float(meta_pelabelan.get("q67", meta_pelabelan.get("q67_tertile", 6.5131)))
 
 
 def sorot_nlp_teks(teks: str) -> Dict[str, Any]:
@@ -191,6 +212,17 @@ class SimulateRequest(BaseModel):
     harga_simulasi: float
     harga_awal: float
     deskripsi: Optional[str] = ""
+
+
+class TambahDataRequest(BaseModel):
+    nama_file: str
+    isi_csv: str
+    tanpa_latih: bool = False
+    paksa: bool = False
+
+
+class RollbackRequest(BaseModel):
+    arsip_path: str
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -384,6 +416,139 @@ async def api_simulate(req: SimulateRequest):
         "perubahan_persen": round(pct_perubahan, 2),
         "proba": hasil['proba']
     }
+
+
+@app.get("/tambah-data", response_class=HTMLResponse)
+@app.get("/admin/data", response_class=HTMLResponse)
+async def halaman_tambah_data(request: Request):
+    """Menampilkan halaman khusus Tambah Data Baru, Retraining & Perbandingan Perubahan Model."""
+    pastikan_guidebook_pdf()
+    riwayat = muat_riwayat()
+    snapshot_aktif = ambil_snapshot_lengkap(".")
+    arsip_list = daftar_arsip()
+
+    df_lengkap = sistem["df"]
+    df_mobil_valid = df_lengkap[
+        ~df_lengkap['merek'].fillna('').str.strip().str.lower().isin(MEREK_ANOMALI_DIKECUALIKAN)
+    ]
+
+    context = {
+        "request": request,
+        "snapshot_aktif": snapshot_aktif,
+        "riwayat": riwayat,
+        "arsip_list": arsip_list,
+        "kolom_wajib": KOLOM_WAJIB_RAW,
+        "total_data": len(df_mobil_valid),
+        "meta": meta_pelabelan,
+        "q33": Q33_TERTILE,
+        "q67": Q67_TERTILE,
+    }
+    return templates.TemplateResponse(request=request, name="tambah_data.html", context=context)
+
+
+@app.post("/api/opsi-tanpa-csv")
+async def api_opsi_tanpa_csv():
+    """
+    Menangani Opsi B (upaya menambah data tanpa CSV hasil scraping manual).
+    Sesuai ketentuan sistem, mengembalikan notifikasi gagal dan mengarahkan ke Guidebook PDF.
+    """
+    return JSONResponse(
+        status_code=400,
+        content={
+            "sukses": False,
+            "pesan": "harus scraping manual, cara scraping dan penggunaan aplikasi ada di guidebook silahkan di download dan dibaca",
+            "guidebook_url": "/download/guidebook",
+        },
+    )
+
+
+@app.post("/api/tambah-data")
+async def api_tambah_data(req: TambahDataRequest):
+    """
+    Menangani Opsi A: Unggah CSV baru hasil scraping OLX, deduplikasi id_iklan,
+    arsip otomatis, jalankan ulang pipeline penuh, dan kembalikan laporan perbandingan.
+    """
+    if not req.isi_csv or not req.isi_csv.strip():
+        return JSONResponse(
+            status_code=400,
+            content={
+                "sukses": False,
+                "pesan": "File CSV kosong atau belum dipilih. Silakan pilih file CSV hasil scraping OLX.",
+            },
+        )
+
+    os.makedirs("arsip", exist_ok=True)
+    tmp_csv_path = os.path.join("arsip", "_tmp_upload_baru.csv")
+    try:
+        with open(tmp_csv_path, "w", encoding="utf-8-sig", newline="") as f:
+            f.write(req.isi_csv)
+
+        hasil = tambah_dan_latih(
+            csv_path=tmp_csv_path,
+            nama_file_asli=req.nama_file or "data_scraping_baru.csv",
+            tanpa_latih=req.tanpa_latih,
+            paksa=req.paksa,
+        )
+        # Segarkan model & dataset di memori server agar kalkulator langsung memakai model baru
+        segarkan_sistem()
+
+        return {
+            "sukses": True,
+            "pesan": hasil.get("pesan", "Penambahan data dan pelatihan ulang berhasil."),
+            "tanpa_latih": hasil.get("tanpa_latih", False),
+            "arsip_path": hasil.get("arsip_path", ""),
+            "laporan": hasil.get("laporan"),
+            "info_penggabungan": hasil.get("info_penggabungan"),
+            "snapshot_aktif": ambil_snapshot_lengkap("."),
+            "riwayat": muat_riwayat(),
+            "arsip_list": daftar_arsip(),
+        }
+    except ValueError as e:
+        return JSONResponse(
+            status_code=400,
+            content={"sukses": False, "pesan": str(e)},
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"sukses": False, "pesan": str(e)},
+        )
+    finally:
+        if os.path.exists(tmp_csv_path):
+            try:
+                os.remove(tmp_csv_path)
+            except Exception:
+                pass
+
+
+@app.post("/api/rollback")
+async def api_rollback(req: RollbackRequest):
+    """Memulihkan dataset dan model dari folder arsip tertentu lalu menyegarkan memori server."""
+    berhasil = pulihkan_arsip(req.arsip_path)
+    if not berhasil:
+        return JSONResponse(
+            status_code=400,
+            content={"sukses": False, "pesan": f"Folder arsip '{req.arsip_path}' tidak ditemukan."},
+        )
+    segarkan_sistem()
+    return {
+        "sukses": True,
+        "pesan": f"Berhasil memulihkan dataset dan model dari arsip '{req.arsip_path}'.",
+        "snapshot_aktif": ambil_snapshot_lengkap("."),
+        "arsip_list": daftar_arsip(),
+    }
+
+
+@app.get("/download/guidebook")
+@app.get("/api/guidebook")
+async def download_guidebook():
+    """Mengunduh file PDF Guidebook cara scraping manual dan penggunaan aplikasi."""
+    pdf_path = pastikan_guidebook_pdf()
+    return FileResponse(
+        path=pdf_path,
+        media_type="application/pdf",
+        filename="Guidebook_AutoLaku_Scraping_dan_Aplikasi.pdf",
+    )
 
 
 if __name__ == "__main__":

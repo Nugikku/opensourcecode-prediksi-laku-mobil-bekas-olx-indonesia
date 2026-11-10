@@ -45,18 +45,28 @@
   </script>
   <style>
     [x-cloak] { display: none !important; }
+    a, button, [role="button"], summary, label[for], select, input[type="file"], input[type="checkbox"] {
+      cursor: pointer;
+    }
+    button:disabled, input:disabled, select:disabled {
+      cursor: not-allowed;
+    }
+    :focus-visible {
+      outline: 2px solid #dc2626;
+      outline-offset: 2px;
+    }
   </style>
 </head>
 <body class="bg-stone-50 text-slate-800 font-sans antialiased selection:bg-orange-500 selection:text-white" x-data="landingApp()">
 
   <!-- TOP NAVIGATION BAR -->
-  <nav class="bg-white/95 backdrop-blur-md border-b border-orange-100 sticky top-0 z-50 transition-all shadow-xs">
+  <nav class="bg-white/95 backdrop-blur-md border-b border-orange-100 sticky top-0 z-50 transition-all shadow-xs" aria-label="Navigasi utama">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3.5 flex items-center justify-between">
       
       <!-- Brand Logo -->
       <a href="/" class="flex items-center space-x-3 group">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-orange-500 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/25 group-hover:scale-105 transition-transform">
-          <i class="fa-solid fa-car-burst text-lg"></i>
+          <i class="fa-solid fa-car-side text-lg" aria-hidden="true"></i>
         </div>
         <div>
           <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">AutoLaku</span>
@@ -65,21 +75,33 @@
       </a>
 
       <!-- Navigation Links -->
-      <div class="hidden md:flex items-center space-x-8 text-sm font-semibold text-stone-600">
+      <div class="hidden md:flex items-center space-x-6 text-sm font-semibold text-stone-600">
         <a href="#tentang" class="hover:text-orange-600 transition-colors">Deskripsi</a>
         <a href="#cara-kerja" class="hover:text-orange-600 transition-colors">Cara Kerja</a>
         <a href="#batasan" class="hover:text-red-600 transition-colors flex items-center">
-          <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xs mr-1.5"></i>
+          <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xs mr-1.5" aria-hidden="true"></i>
           Batasan Sistem
         </a>
         <a href="#cakupan-data" class="hover:text-orange-600 transition-colors">Daftar Mobil</a>
+        <a href="/tambah-data" class="hover:text-red-600 transition-colors flex items-center font-bold text-stone-800">
+          <i class="fa-solid fa-database text-red-600 text-xs mr-1.5" aria-hidden="true"></i>
+          Tambah Data &amp; Riwayat
+        </a>
+        <a href="/download/guidebook" download class="hover:text-orange-600 transition-colors flex items-center text-stone-700">
+          <i class="fa-solid fa-file-pdf text-red-600 text-xs mr-1.5" aria-hidden="true"></i>
+          Guidebook PDF
+        </a>
       </div>
 
       <!-- Action Button to Simulator -->
-      <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-2">
+        <a href="/tambah-data" class="md:hidden inline-flex items-center space-x-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs px-3 py-2.5 rounded-xl border border-stone-300">
+          <i class="fa-solid fa-database text-red-600" aria-hidden="true"></i>
+          <span>Data Baru</span>
+        </a>
         <a href="/prediksi" class="inline-flex items-center space-x-2 bg-gradient-to-r from-red-600 via-orange-500 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2.5 rounded-xl shadow-md shadow-orange-500/25 hover:shadow-lg hover:shadow-orange-500/35 transition-all">
           <span>Kalkulator Prediksi</span>
-          <i class="fa-solid fa-arrow-right text-xs"></i>
+          <i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
         </a>
       </div>
 
@@ -111,16 +133,21 @@
       </p>
 
       <!-- Primary Call-to-Action Buttons -->
-      <div class="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+      <div class="pt-4 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4">
         <a href="/prediksi" class="w-full sm:w-auto inline-flex items-center justify-center space-x-3 bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 hover:from-red-700 hover:to-orange-600 text-white font-extrabold text-base px-8 py-4 rounded-2xl shadow-xl shadow-orange-500/30 hover:scale-102 transition-all">
-          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <i class="fa-solid fa-calculator" aria-hidden="true"></i>
           <span>Buka Kalkulator Prediksi</span>
-          <i class="fa-solid fa-arrow-right text-xs"></i>
+          <i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
         </a>
 
-        <a href="#cara-kerja" class="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white/10 hover:bg-white/15 text-stone-200 border border-white/20 font-bold text-base px-6 py-4 rounded-2xl transition-all">
-          <i class="fa-solid fa-circle-play text-orange-400"></i>
-          <span>Pelajari Alur Sistem</span>
+        <a href="/tambah-data" class="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white/10 hover:bg-white/15 text-stone-100 border border-white/25 font-bold text-base px-6 py-4 rounded-2xl transition-all">
+          <i class="fa-solid fa-database text-amber-400" aria-hidden="true"></i>
+          <span>Tambah Data &amp; Riwayat Model</span>
+        </a>
+
+        <a href="/download/guidebook" download class="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-amber-400/15 hover:bg-amber-400/25 text-amber-200 border border-amber-400/40 font-bold text-base px-6 py-4 rounded-2xl transition-all">
+          <i class="fa-solid fa-file-pdf text-amber-300" aria-hidden="true"></i>
+          <span>Download Guidebook PDF</span>
         </a>
       </div>
 
@@ -128,29 +155,29 @@
       <div class="pt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
         <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5">
           <div class="text-2xl sm:text-3xl font-black text-white">{{ total_data }}</div>
-          <div class="text-xs text-stone-400 font-medium mt-1">Data Iklan Bersih OLX</div>
+          <div class="text-xs text-stone-300 font-medium mt-1">Data Iklan Bersih OLX</div>
         </div>
 
         <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5">
           <div class="text-2xl sm:text-3xl font-black text-orange-400">{{ total_merek }}</div>
-          <div class="text-xs text-stone-400 font-medium mt-1">Merek Pabrikan Terekam</div>
+          <div class="text-xs text-stone-300 font-medium mt-1">Merek Pabrikan Terekam</div>
         </div>
 
         <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5">
-          <div class="text-2xl sm:text-3xl font-black text-amber-400">99.79%</div>
-          <div class="text-xs text-stone-400 font-medium mt-1">F1-Score Model Terbaik</div>
+          <div class="text-2xl sm:text-3xl font-black text-amber-400">{{ "%.2f"|format((meta.f1_macro_test or 0.9840) * 100) }}%</div>
+          <div class="text-xs text-stone-300 font-medium mt-1">F1-Macro Test ({{ meta.model_klasifikasi or 'Random Forest' }})</div>
         </div>
 
         <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5">
           <div class="text-2xl sm:text-3xl font-black text-red-400">100% Bebas</div>
-          <div class="text-xs text-stone-400 font-medium mt-1">Data Leakage Split (80:20)</div>
+          <div class="text-xs text-stone-300 font-medium mt-1">Data Leakage Split (80:20)</div>
         </div>
       </div>
 
     </div>
   </header>
 
-
+  <main>
   <!-- SECTION 1: DESKRIPSI SISTEM & PROBLEM STATEMENT -->
   <section id="tentang" class="py-16 sm:py-24 bg-white border-b border-orange-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -268,9 +295,9 @@
         <!-- Step 3 -->
         <div class="bg-white rounded-2xl p-6 border border-stone-200 shadow-sm relative space-y-4 hover:shadow-md hover:border-amber-300 transition-all">
           <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 font-black text-sm flex items-center justify-center">03</div>
-          <h3 class="text-base font-bold text-stone-800">Regresi & Deviasi Kuantil</h3>
+          <h3 class="text-base font-bold text-stone-800">Regresi &amp; Deviasi Kuantil</h3>
           <p class="text-xs text-stone-600 leading-relaxed">
-            Gradient Boosting log-price menghitung harga wajar pasar. Selisih deviasi harga iklan diukur terhadap ambang persentil tertile data train (Q33: {{ "%.2f"|format(q33) }}% & Q67: {{ "%.2f"|format(q67) }}%).
+            {{ meta.model_regresi or 'Linear Regression' }} log-price menghitung harga wajar pasar. Selisih deviasi harga iklan diukur terhadap ambang persentil tertile data train (Q33: {{ "%.2f"|format(q33) }}% &amp; Q67: {{ "%.2f"|format(q67) }}%).
           </p>
         </div>
 
@@ -495,37 +522,47 @@
         Buka halaman aplikasi kalkulator prediksi sekarang untuk menganalisis kecepatan laku dan menjalankan simulasi slider harga interaktif.
       </p>
 
-      <div class="pt-2">
+      <div class="pt-2 flex flex-wrap items-center justify-center gap-4">
         <a href="/prediksi" class="inline-flex items-center space-x-3 bg-white text-red-600 hover:bg-orange-50 font-black text-base px-8 py-4 rounded-2xl shadow-xl hover:scale-105 transition-all">
-          <i class="fa-solid fa-calculator text-orange-600"></i>
+          <i class="fa-solid fa-calculator text-orange-600" aria-hidden="true"></i>
           <span>Buka Kalkulator Prediksi Sekarang</span>
-          <i class="fa-solid fa-arrow-right text-xs"></i>
+          <i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
+        </a>
+        <a href="/tambah-data" class="inline-flex items-center space-x-2 bg-stone-950/80 hover:bg-stone-950 text-white border border-white/25 font-bold text-base px-6 py-4 rounded-2xl shadow-lg transition-all">
+          <i class="fa-solid fa-database text-amber-300" aria-hidden="true"></i>
+          <span>Menu Tambah Data Baru &amp; Retraining</span>
         </a>
       </div>
 
     </div>
   </section>
-
+  </main>
 
   <!-- FOOTER -->
-  <!-- <footer class="bg-stone-950 text-stone-400 py-10 border-t border-stone-800 text-xs">
+  <footer class="bg-stone-950 text-stone-300 py-10 border-t border-stone-800 text-xs">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
       <div>
         <span class="text-white font-extrabold text-sm">AutoLaku &bull; Proyek Data Mining Semester 5</span>
-        <p class="text-stone-500 mt-1">Sains Data: Web Scraping, Feature Engineering, Regression, & Classification</p>
+        <p class="text-stone-400 mt-1">Sains Data: Web Scraping, Feature Engineering, Regression, &amp; Classification</p>
       </div>
-      <div>
-        <a href="/prediksi" class="text-orange-400 hover:text-orange-300 font-bold">Menuju Aplikasi Prediksi &rarr;</a>
+      <div class="flex flex-wrap items-center justify-center gap-5">
+        <a href="/prediksi" class="text-orange-400 hover:text-orange-300 font-bold">Kalkulator Prediksi</a>
+        <a href="/tambah-data" class="text-stone-200 hover:text-white font-bold">Tambah Data &amp; Riwayat</a>
+        <a href="/download/guidebook" download class="text-amber-300 hover:text-amber-200 font-bold">Unduh Guidebook PDF</a>
       </div>
     </div>
-  </footer> -->
+  </footer>
+
+  <!-- DATA AWAL DARI BACKEND (JSON MURNI AGAR VS CODE TIDAK MENANDAI ERROR SINTAKS JS) -->
+  <script id="landing-brands-json" type="application/json">{{ merek_summary | tojson }}</script>
 
   <!-- ALPINE.JS LOGIC -->
   <script>
     function landingApp() {
+      const initialBrands = JSON.parse(document.getElementById('landing-brands-json')?.textContent || '[]');
       return {
         searchBrand: "",
-        brandsList: {{ merek_summary | tojson }},
+        brandsList: initialBrands,
 
         get filteredBrands() {
           if (!this.searchBrand) return this.brandsList;

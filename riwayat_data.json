@@ -1,0 +1,472 @@
+[
+  {
+    "info_penggabungan": {
+      "nama_file": "dataset_olx_mentah.csv (Batch 2 - 02 Nov 2026)",
+      "baris_file_baru": 3000,
+      "baris_duplikat_id": 185,
+      "baris_ditambahkan": 2815,
+      "total_mentah_akhir": 3000,
+      "mode": "Batch Scraping Baru (Batch 1 -> Batch 2)"
+    },
+    "sebelum": {
+      "tanggal_snapshot": "2026-10-30",
+      "preprocessing": {
+        "data_mentah": 3000,
+        "data_bersih": 2334,
+        "noise_ditandai": 10,
+        "outlier_ditandai": 68,
+        "imputasi_km": 0,
+        "transmisi_asumsi": 724,
+        "transmisi_asumsi_pct": 31.0,
+        "merek_unik": 42,
+        "model_unik": 151,
+        "daftar_merek": [
+          "Aston Martin",
+          "Audi",
+          "Baic",
+          "Bmw",
+          "Byd",
+          "Chery",
+          "Chevrolet",
+          "Daihatsu",
+          "Datsun",
+          "Denza",
+          "Fiat",
+          "Ford",
+          "Gwm",
+          "Honda",
+          "Hummer",
+          "Hyundai",
+          "Isuzu",
+          "Jeep",
+          "Jetour",
+          "Kia",
+          "Land Rover",
+          "Lexus",
+          "Maserati",
+          "Mazda",
+          "Mercedes-Benz",
+          "Mg",
+          "Mini",
+          "Mini Cooper",
+          "Mitsubishi",
+          "Nissan",
+          "Opel",
+          "Peugeot",
+          "Porsche",
+          "Proton",
+          "Renault",
+          "Subaru",
+          "Suzuki",
+          "Tesla",
+          "Timor",
+          "Toyota",
+          "Volkswagen",
+          "Wuling"
+        ],
+        "harga_median": 219000000.0,
+        "harga_mean": 360734967.0
+      },
+      "pelabelan": {
+        "data_berlabel": 2324,
+        "train_size": 1859,
+        "test_size": 465,
+        "model_regresi": "Ridge (alpha=1.0)",
+        "mape_harga_wajar_pct": 18.77,
+        "mae_harga_wajar_rupiah": 77169347.0,
+        "rmse_harga_wajar_rupiah": 190394103.0,
+        "r2_harga_wajar": 0.7726,
+        "q33": -6.96,
+        "q67": 7.3,
+        "distribusi_train": {
+          "Cepat": 609,
+          "Sedang": 636,
+          "Lambat": 614
+        },
+        "distribusi_test": {
+          "Cepat": 158,
+          "Sedang": 159,
+          "Lambat": 148
+        },
+        "sumber_harga_wajar_test": {
+          "regresi usia (model)": 294,
+          "model ML": 126,
+          "regresi usia (merek)": 33,
+          "median (model)": 12
+        }
+      },
+      "seleksi_fitur": {
+        "dipertahankan": [
+          "merek",
+          "model",
+          "transmisi",
+          "ada_garansi",
+          "riwayat_negatif",
+          "catatan_servis",
+          "pajak_hidup",
+          "tahun",
+          "jarak_tempuh",
+          "km_per_tahun"
+        ],
+        "dibuang": {
+          "tipe_penjual": "konstan (hanya satu nilai, tidak membawa informasi)",
+          "usia_mobil": "redundan dengan tahun (r=0.9995)"
+        }
+      },
+      "klasifikasi": {
+        "model_terpilih": "Random Forest",
+        "f1_macro_cv_pct": 99.41,
+        "f1_macro_cv_std_pct": 0.46,
+        "f1_macro_test_pct": 98.72,
+        "accuracy_test_pct": 98.71,
+        "rmse_ordinal_test": 0.1136,
+        "rerata_keyakinan_pct": 72.13,
+        "ablation_dengan_deviasi_acc_pct": 98.71,
+        "ablation_tanpa_deviasi_acc_pct": 51.4,
+        "ablation_dengan_deviasi_f1_pct": 98.72,
+        "ablation_tanpa_deviasi_f1_pct": 50.76,
+        "tuning": {
+          "dilakukan": true,
+          "metode": "RandomizedSearchCV n_iter=8, inner CV=3, outer CV=5",
+          "parameter_terbaik": {
+            "clf__n_estimators": 300,
+            "clf__min_samples_leaf": 2,
+            "clf__max_features": 0.5,
+            "clf__max_depth": 16
+          },
+          "f1_nested_mean": 0.9957,
+          "f1_nested_std": 0.0036,
+          "f1_default_cv": 0.9941,
+          "dipakai": false,
+          "alasan": "selisih dengan default tidak bermakna (< 1 std)"
+        },
+        "kandidat_skenario2": [
+          {
+            "model": "Logistic Regression",
+            "f1_cv_pct": 93.84,
+            "f1_std_pct": 1.54,
+            "f1_train_pct": 97.29,
+            "gap_pct": 3.44,
+            "rmse_ordinal": 0.2498,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 84.83
+          },
+          {
+            "model": "KNN (K=5)",
+            "f1_cv_pct": 61.59,
+            "f1_std_pct": 1.15,
+            "f1_train_pct": 76.93,
+            "gap_pct": 15.34,
+            "rmse_ordinal": 0.7389,
+            "monoton_langgar_pct": 6.67,
+            "keyakinan_pct": 70.31
+          },
+          {
+            "model": "Naive Bayes (Bernoulli, diskretisasi)",
+            "f1_cv_pct": 87.51,
+            "f1_std_pct": 0.78,
+            "f1_train_pct": 89.37,
+            "gap_pct": 1.85,
+            "rmse_ordinal": 0.3555,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 91.91
+          },
+          {
+            "model": "Decision Tree",
+            "f1_cv_pct": 99.79,
+            "f1_std_pct": 0.2,
+            "f1_train_pct": 100.0,
+            "gap_pct": 0.21,
+            "rmse_ordinal": 0.0464,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 100.0
+          },
+          {
+            "model": "Random Forest",
+            "f1_cv_pct": 99.41,
+            "f1_std_pct": 0.46,
+            "f1_train_pct": 100.0,
+            "gap_pct": 0.59,
+            "rmse_ordinal": 0.0769,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 72.13
+          },
+          {
+            "model": "Gradient Boosting",
+            "f1_cv_pct": 99.79,
+            "f1_std_pct": 0.2,
+            "f1_train_pct": 100.0,
+            "gap_pct": 0.21,
+            "rmse_ordinal": 0.0464,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 100.0
+          }
+        ]
+      }
+    },
+    "sesudah": {
+      "tanggal_snapshot": "2026-11-02",
+      "preprocessing": {
+        "data_mentah": 3000,
+        "data_bersih": 2643,
+        "noise_ditandai": 1,
+        "outlier_ditandai": 82,
+        "imputasi_km": 24,
+        "transmisi_asumsi": 936,
+        "transmisi_asumsi_pct": 35.4,
+        "merek_unik": 56,
+        "model_unik": 396,
+        "daftar_merek": [
+          "Aion",
+          "Aprilia",
+          "Audi",
+          "Baic",
+          "Bmw",
+          "Byd",
+          "Chery",
+          "Chevrolet",
+          "Citroen",
+          "Daihatsu",
+          "Datsun",
+          "Denza",
+          "Dfsk",
+          "Dfsk (Dongfeng Sokon)",
+          "Ducati",
+          "Fiat",
+          "Ford",
+          "Geely",
+          "Gwm",
+          "Harley Davidson",
+          "Hino",
+          "Honda",
+          "Hummer",
+          "Hyundai",
+          "Isuzu",
+          "Jaguar",
+          "Jeep",
+          "Jetour",
+          "Kawasaki",
+          "Kia",
+          "Ktm",
+          "Land Rover",
+          "Lexus",
+          "Maxus",
+          "Mazda",
+          "Mercedes-Benz",
+          "Mg",
+          "Mini",
+          "Mini Cooper",
+          "Mitsubishi",
+          "Neta",
+          "Nissan",
+          "Piaggio",
+          "Porsche",
+          "Proton",
+          "Renault",
+          "Subaru",
+          "Suzuki",
+          "Tesla",
+          "Timor",
+          "Toyota",
+          "Truk",
+          "Volkswagen",
+          "Volvo",
+          "Wuling",
+          "Yamaha"
+        ],
+        "harga_median": 210000000.0,
+        "harga_mean": 342115861.0
+      },
+      "pelabelan": {
+        "data_berlabel": 2642,
+        "train_size": 2113,
+        "test_size": 529,
+        "model_regresi": "Linear Regression",
+        "mape_harga_wajar_pct": 20.1,
+        "mae_harga_wajar_rupiah": 71303921.0,
+        "rmse_harga_wajar_rupiah": 181027569.0,
+        "r2_harga_wajar": 0.7735,
+        "q33": -7.27,
+        "q67": 6.51,
+        "distribusi_train": {
+          "Cepat": 691,
+          "Sedang": 725,
+          "Lambat": 697
+        },
+        "distribusi_test": {
+          "Cepat": 153,
+          "Sedang": 179,
+          "Lambat": 197
+        },
+        "sumber_harga_wajar_test": {
+          "regresi usia (model)": 261,
+          "model ML": 153,
+          "regresi usia (merek)": 104,
+          "median (model)": 11
+        }
+      },
+      "seleksi_fitur": {
+        "dipertahankan": [
+          "merek",
+          "model",
+          "transmisi",
+          "ada_garansi",
+          "riwayat_negatif",
+          "catatan_servis",
+          "pajak_hidup",
+          "tahun",
+          "jarak_tempuh",
+          "km_per_tahun"
+        ],
+        "dibuang": {
+          "tipe_penjual": "konstan (hanya satu nilai, tidak membawa informasi)",
+          "usia_mobil": "redundan dengan tahun (r=0.9996)"
+        }
+      },
+      "klasifikasi": {
+        "model_terpilih": "Random Forest",
+        "f1_macro_cv_pct": 98.73,
+        "f1_macro_cv_std_pct": 0.64,
+        "f1_macro_test_pct": 98.4,
+        "accuracy_test_pct": 98.49,
+        "rmse_ordinal_test": 0.123,
+        "rerata_keyakinan_pct": 60.66,
+        "ablation_dengan_deviasi_acc_pct": 98.49,
+        "ablation_tanpa_deviasi_acc_pct": 42.91,
+        "ablation_dengan_deviasi_f1_pct": 98.4,
+        "ablation_tanpa_deviasi_f1_pct": 41.87,
+        "tuning": {
+          "dilakukan": true,
+          "metode": "RandomizedSearchCV n_iter=8, inner CV=3, outer CV=5",
+          "parameter_terbaik": {
+            "clf__n_estimators": 200,
+            "clf__min_samples_leaf": 1,
+            "clf__max_features": 0.5,
+            "clf__max_depth": 12
+          },
+          "f1_nested_mean": 0.9976,
+          "f1_nested_std": 0.0015,
+          "f1_default_cv": 0.9873,
+          "dipakai": false,
+          "alasan": "ditolak: melanggar monotonisitas atau overconfident"
+        },
+        "kandidat_skenario2": [
+          {
+            "model": "Logistic Regression",
+            "f1_cv_pct": 93.61,
+            "f1_std_pct": 1.22,
+            "f1_train_pct": 97.82,
+            "gap_pct": 4.21,
+            "rmse_ordinal": 0.2546,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 84.56
+          },
+          {
+            "model": "KNN (K=5)",
+            "f1_cv_pct": 59.14,
+            "f1_std_pct": 3.5,
+            "f1_train_pct": 74.69,
+            "gap_pct": 15.55,
+            "rmse_ordinal": 0.7648,
+            "monoton_langgar_pct": 7.0,
+            "keyakinan_pct": 68.89
+          },
+          {
+            "model": "Naive Bayes (Bernoulli, diskretisasi)",
+            "f1_cv_pct": 88.34,
+            "f1_std_pct": 1.22,
+            "f1_train_pct": 89.8,
+            "gap_pct": 1.47,
+            "rmse_ordinal": 0.344,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 92.26
+          },
+          {
+            "model": "Decision Tree",
+            "f1_cv_pct": 99.86,
+            "f1_std_pct": 0.12,
+            "f1_train_pct": 100.0,
+            "gap_pct": 0.14,
+            "rmse_ordinal": 0.0377,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 100.0
+          },
+          {
+            "model": "Random Forest",
+            "f1_cv_pct": 98.73,
+            "f1_std_pct": 0.64,
+            "f1_train_pct": 99.95,
+            "gap_pct": 1.22,
+            "rmse_ordinal": 0.113,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 60.66
+          },
+          {
+            "model": "Gradient Boosting",
+            "f1_cv_pct": 99.86,
+            "f1_std_pct": 0.12,
+            "f1_train_pct": 100.0,
+            "gap_pct": 0.14,
+            "rmse_ordinal": 0.0377,
+            "monoton_langgar_pct": 0.0,
+            "keyakinan_pct": 100.0
+          }
+        ]
+      }
+    },
+    "delta": {
+      "data_mentah": 0,
+      "data_bersih": 309,
+      "data_berlabel": 318,
+      "train_size": 254,
+      "test_size": 64,
+      "merek_unik": 14,
+      "model_unik": 245,
+      "merek_bertambah": [
+        "Aion",
+        "Aprilia",
+        "Citroen",
+        "Dfsk",
+        "Dfsk (Dongfeng Sokon)",
+        "Ducati",
+        "Geely",
+        "Harley Davidson",
+        "Hino",
+        "Jaguar",
+        "Kawasaki",
+        "Ktm",
+        "Maxus",
+        "Neta",
+        "Piaggio",
+        "Truk",
+        "Volvo",
+        "Yamaha"
+      ],
+      "merek_berkurang": [
+        "Aston Martin",
+        "Maserati",
+        "Opel",
+        "Peugeot"
+      ],
+      "harga_median": -9000000.0,
+      "mape_harga_wajar_pct": 1.33,
+      "r2_harga_wajar": 0.0009,
+      "q33": -0.31,
+      "q67": -0.79,
+      "f1_macro_cv_pct": -0.68,
+      "f1_macro_test_pct": -0.32,
+      "accuracy_test_pct": -0.22,
+      "rmse_ordinal_test": 0.0094
+    },
+    "tes_sistem": {
+      "lulus": 21,
+      "total": 21,
+      "semua_lulus": true,
+      "ringkasan": "21/21 tes lulus"
+    },
+    "id_riwayat": "batch_1_ke_batch_2",
+    "waktu": "2026-11-02 19:20:19",
+    "label_batch": "Pembaruan Dataset Batch 1 (30 Okt 2026) ke Batch 2 (02 Nov 2026)",
+    "arsip_path": "hasil_sistem_30_10_2026\\dataset_30-09-2026"
+  }
+]
