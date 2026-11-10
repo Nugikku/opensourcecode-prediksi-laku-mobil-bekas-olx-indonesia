@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoLaku - Sistem Prediksi Likuiditas Mobil Bekas OLX</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+            },
+            accent: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-stone-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-orange-500 selection:text-white" x-data="autolakuApp()">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="bg-white border-b border-orange-100 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="/" class="flex items-center space-x-3 group">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-orange-500 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/25 group-hover:scale-105 transition-transform">
+            <i class="fa-solid fa-car-burst text-lg"></i>
+          </div>
+          <div>
+            <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">AutoLaku</span>
+            <span class="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">ML & NLP Engine</span>
+          </div>
+        </a>
+      </div>
+      <div class="flex items-center space-x-3">
+        <a href="/" class="inline-flex items-center text-xs font-bold text-stone-700 hover:text-orange-600 bg-stone-100 hover:bg-orange-50 px-3 py-1.5 rounded-lg border border-stone-200 hover:border-orange-200 transition-colors">
+          <i class="fa-solid fa-house mr-1.5 text-orange-500"></i>
+          Halaman Awal
+        </a>
+        <span class="hidden md:inline-flex items-center text-xs text-stone-500 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200">
+          <i class="fa-solid fa-database text-orange-500 mr-2"></i>
+          {{ total_data }} Data Iklan Aktif OLX
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- HERO & ACADEMIC VALUE PROPOSITION (WARM DARK RED/ORANGE THEME) -->
+    <div class="bg-gradient-to-r from-stone-950 via-neutral-900 to-red-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      <!-- Background Decorative Grid -->
+      <div class="absolute inset-0 opacity-15 bg-[radial-gradient(#f97316_1px,transparent_1px)] [background-size:16px_16px]"></div>
+      <div class="absolute top-0 right-0 w-80 h-80 bg-orange-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="relative z-10 max-w-3xl">
+        <div class="inline-flex items-center space-x-2 bg-orange-500/20 border border-orange-400/30 px-3 py-1 rounded-full text-xs font-medium text-orange-200 mb-4">
+          <i class="fa-solid fa-bolt text-amber-400"></i>
+          <span>Estimasi Likuiditas Penjualan Mobil Bekas Berbasis AI</span>
+        </div>
+        <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+          Prediksi Kecepatan Laku Mobil Bekas Berdasarkan Harga Pasar & Teks Iklan
+        </h1>
+        <p class="mt-3 text-stone-300 text-sm sm:text-base leading-relaxed font-normal">
+          Mengatasi <span class="text-white font-semibold italic">asimetri informasi</span> dan risiko unit mengendap lama (*liquidity risk*). 
+          Didukung regresi nilai wajar Gradient Boosting, analisis teks NLP, serta klasifikasi likuiditas (*Cepat, Sedang, Lambat*).
+        </p>
+      </div>
+    </div>
+
+    <!-- MAIN TWO-COLUMN WORKSPACE -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- LEFT COLUMN: FORMULIR INPUT PENJUAL (5 COLS) -->
+      <div class="lg:col-span-5 space-y-6">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-stone-200/90">
+          <div class="flex items-center justify-between pb-4 border-b border-stone-100 mb-5">
+            <h2 class="text-lg font-bold text-stone-800 flex items-center">
+              <i class="fa-solid fa-sliders text-red-600 mr-2.5"></i>
+              Spesifikasi Kendaraan
+            </h2>
+            <button @click="resetForm()" type="button" class="text-xs text-stone-400 hover:text-stone-600 font-medium">
+              <i class="fa-solid fa-rotate-left mr-1"></i> Reset
+            </button>
+          </div>
+
+          <form @submit.prevent="runPrediction()" class="space-y-4">
+            <!-- Merek & Model Row -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-1.5">Merek</label>
+                <select x-model="form.merek" @change="fetchModels()" class="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all">
+                  <template x-for="m in brands" :key="m">
+                    <option :value="m" x-text="m"></option>
+                  </template>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-1.5">Model / Seri</label>
+                <select x-model="form.model" class="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all">
+                  <template x-for="mod in availableModels" :key="mod">
+                    <option :value="mod" x-text="mod"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+
+            <!-- Tahun & Transmisi Row -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-1.5">Tahun Perakitan</label>
+                <input type="number" x-model.number="form.tahun" min="{{ tahun_min }}" max="{{ tahun_max }}" class="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-1.5">Transmisi</label>
+                <select x-model="form.transmisi" class="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all">
+                  <option value="Automatic">Automatic (AT/CVT)</option>
+                  <option value="Manual">Manual (MT)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Odometer Input -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-1.5">Jarak Tempuh / Odometer (KM)</label>
+              <input type="number" x-model.number="form.km" step="5000" min="0" max="1500000" class="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all">
+            </div>
+
+            <!-- Rencana Harga Jual Input -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label class="block text-xs font-bold uppercase tracking-wider text-stone-600">Rencana Harga Jual (Rp)</label>
+                <span class="text-xs font-bold text-orange-600" x-text="formatRupiah(form.harga_iklan)"></span>
+              </div>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-stone-400 font-bold text-sm">Rp</span>
+                <input type="number" x-model.number="form.harga_iklan" step="1000000" min="10000000" max="5000000000" class="w-full bg-stone-50 border border-stone-300 rounded-xl pl-11 pr-3 py-2.5 text-sm font-bold text-stone-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all">
+              </div>
+            </div>
+
+            <!-- Draf Deskripsi Iklan (NLP Text Scanner) -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label class="block text-xs font-bold uppercase tracking-wider text-stone-600">Draf Deskripsi Iklan OLX</label>
+                <span class="text-[11px] text-orange-700 bg-orange-50 px-2 py-0.5 rounded font-bold border border-orange-200">NLP Keyword Engine</span>
+              </div>
+              <textarea x-model="form.deskripsi" rows="3" placeholder="Contoh: Mobil terawat istimewa, servis berkala rutin, garansi mesin, bebas banjir dan tidak pernah tabrakan..." class="w-full bg-stone-50 border border-stone-300 rounded-xl p-3 text-xs leading-relaxed focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all"></textarea>
+              <p class="text-[11px] text-stone-500 mt-1 flex items-center">
+                <i class="fa-solid fa-circle-info text-orange-500 mr-1.5"></i>
+                Deteksi otomatis kata garansi, rekam servis, bebas banjir, & skema kredit TDP.
+              </p>
+            </div>
+
+            <!-- Submit Button (Red-Orange Gradient) -->
+            <button type="submit" :disabled="loading" class="w-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 hover:from-red-700 hover:to-orange-600 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 transition-all disabled:opacity-50 hover:scale-[1.01]">
+              <template x-if="!loading">
+                <span class="flex items-center space-x-2">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i>
+                  <span>Analisis & Prediksi Likuiditas</span>
+                </span>
+              </template>
+              <template x-if="loading">
+                <span class="flex items-center space-x-2">
+                  <i class="fa-solid fa-spinner fa-spin"></i>
+                  <span>Memproses Estimasi AI...</span>
+                </span>
+              </template>
+            </button>
+          </form>
+        </div>
+
+        <!-- ACADEMIC PIPELINE MINI INFO -->
+        <div class="bg-orange-50/40 rounded-2xl p-4 border border-orange-200 text-xs text-stone-600 space-y-2">
+          <div class="font-bold text-stone-800 flex items-center">
+            <i class="fa-solid fa-microchip text-red-600 mr-1.5"></i>
+            Metodologi Sains Data (P3–P13)
+          </div>
+          <p>
+            Pipeline mengombinasikan <strong>Gradient Boosting Log-Regresi</strong> untuk harga pasar wajar dan <strong>Tertile Boundary Classifier</strong> bebas data leakage.
+          </p>
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-orange-200">
+            <div><span class="text-stone-400">Ambang Cepat:</span> <strong class="text-stone-800">&le; {{ "%.2f"|format(q33) }}%</strong></div>
+            <div><span class="text-stone-400">Ambang Lambat:</span> <strong class="text-stone-800">&gt; {{ "%.2f"|format(q67) }}%</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: DASHBOARD HASIL PREDIKSI (7 COLS) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- INITIAL PLACEHOLDER (SEBELUM PREDIKSI DIJALANKAN) -->
+        <div x-show="!result && !loading" class="bg-white rounded-2xl p-12 text-center border-2 border-dashed border-stone-200 space-y-4">
+          <div class="w-16 h-16 mx-auto rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center text-2xl shadow-inner">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+          <div class="max-w-md mx-auto">
+            <h3 class="text-lg font-bold text-stone-800">Menunggu Input Data Kendaraan</h3>
+            <p class="text-sm text-stone-500 mt-1">
+              Lengkapi spesifikasi mobil dan draf iklan di panel kiri, lalu klik <strong>Analisis & Prediksi Likuiditas</strong> untuk meninjau hasil evaluasi.
+            </p>
+          </div>
+        </div>
+
+        <!-- LOADING SKELETON -->
+        <div x-show="loading" x-cloak class="bg-white rounded-2xl p-8 border border-stone-200 shadow-sm text-center space-y-4 animate-pulse">
+          <div class="h-8 bg-stone-200 rounded-lg w-1/3 mx-auto"></div>
+          <div class="h-24 bg-stone-100 rounded-xl"></div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="h-20 bg-stone-100 rounded-xl"></div>
+            <div class="h-20 bg-stone-100 rounded-xl"></div>
+          </div>
+        </div>
+
+        <!-- HASIL ANALISIS AKTIF -->
+        <div x-show="result && !loading" x-cloak class="space-y-6">
+
+          <!-- 1. BADGE STATUS LIKUIDITAS DINAMIS (HERO CARD) -->
+          <div class="rounded-2xl p-6 shadow-sm border transition-all duration-300"
+               :class="{
+                 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white border-emerald-300': result?.status === 'Cepat',
+                 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white border-amber-300': result?.status === 'Sedang',
+                 'bg-gradient-to-br from-red-500/10 via-red-500/5 to-white border-red-300': result?.status === 'Lambat'
+               }">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-stone-500">Prediksi Kecepatan Laku Unit</span>
+                <div class="flex items-center space-x-3 mt-1.5">
+                  <!-- Dynamic Pill Badge -->
+                  <span class="inline-flex items-center px-4 py-2 rounded-xl text-base sm:text-lg font-black tracking-wide shadow-sm"
+                        :class="{
+                          'bg-emerald-600 text-white ring-4 ring-emerald-600/20': result?.status === 'Cepat',
+                          'bg-amber-500 text-white ring-4 ring-amber-500/20': result?.status === 'Sedang',
+                          'bg-red-600 text-white ring-4 ring-red-600/20': result?.status === 'Lambat'
+                        }">
+                    <template x-if="result?.status === 'Cepat'">
+                      <span class="flex items-center"><i class="fa-solid fa-circle-check mr-2"></i> CEPAT LAKU</span>
+                    </template>
+                    <template x-if="result?.status === 'Sedang'">
+                      <span class="flex items-center"><i class="fa-solid fa-clock mr-2"></i> SEDANG LAKU</span>
+                    </template>
+                    <template x-if="result?.status === 'Lambat'">
+                      <span class="flex items-center"><i class="fa-solid fa-triangle-exclamation mr-2"></i> LAMBAT LAKU</span>
+                    </template>
+                  </span>
+                  
+                  <span class="text-sm font-bold"
+                        :class="{
+                          'text-emerald-700': result?.status === 'Cepat',
+                          'text-amber-700': result?.status === 'Sedang',
+                          'text-red-700': result?.status === 'Lambat'
+                        }">
+                    Deviasi: <span x-text="(result?.deviasi_persen > 0 ? '+' : '') + result?.deviasi_persen + '%'"></span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Kendaraan Info Tag -->
+              <div class="sm:text-right">
+                <div class="text-xs text-stone-500 font-medium">Unit Teranalisis</div>
+                <div class="text-sm font-bold text-stone-800" x-text="form.merek + ' ' + form.model + ' (' + form.tahun + ')'"></div>
+                <div class="text-xs text-stone-500" x-text="form.transmisi + ' • ' + (form.km).toLocaleString('id-ID') + ' KM'"></div>
+              </div>
+            </div>
+
+            <!-- Rekomendasi Naratif -->
+            <div class="mt-4 pt-4 border-t border-stone-200/60 text-xs sm:text-sm text-stone-700 flex items-start space-x-2">
+              <i class="fa-solid fa-lightbulb text-amber-500 text-base mt-0.5"></i>
+              <p x-text="result?.rekomendasi?.pesan"></p>
+            </div>
+          </div>
+
+          <!-- 2. CARD ESTIMASI HARGA WAJAR VS DEVIASI -->
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-stone-200/90 space-y-5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-bold text-stone-800 flex items-center">
+                <i class="fa-solid fa-scale-balanced text-orange-600 mr-2"></i>
+                Estimasi Nilai Pasar Wajar vs Rencana Jual
+              </h3>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 border border-orange-200" x-text="'Sumber: ' + result?.sumber_harga_wajar"></span>
+            </div>
+
+            <!-- Price Metrics Comparison Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="p-4 rounded-xl bg-stone-50 border border-stone-200">
+                <div class="text-xs font-semibold text-stone-500 mb-1">Rencana Harga Iklan</div>
+                <div class="text-lg font-black text-stone-900" x-text="formatRupiah(result?.harga_iklan)"></div>
+                <div class="text-[11px] text-stone-500 mt-1">Dipasang oleh penjual</div>
+              </div>
+
+              <div class="p-4 rounded-xl bg-orange-50/80 border border-orange-200">
+                <div class="text-xs font-semibold text-orange-800 mb-1">Estimasi Harga Wajar (AI)</div>
+                <div class="text-lg font-black text-red-700" x-text="formatRupiah(result?.harga_wajar)"></div>
+                <div class="text-[11px] text-orange-700 mt-1">Gradient Boosting Log-Regresi</div>
+              </div>
+
+              <div class="p-4 rounded-xl bg-stone-50 border border-stone-200">
+                <div class="text-xs font-semibold text-stone-500 mb-1">Rentang Wajar Pasar</div>
+                <div class="text-xs font-bold text-stone-800 mt-1" x-text="formatRupiah(result?.rentang_pasar?.batas_cepat_rp) + ' s/d ' + formatRupiah(result?.rentang_pasar?.batas_lambat_rp)"></div>
+                <div class="text-[11px] text-stone-500 mt-1">Batas Tertile Q33 – Q67</div>
+              </div>
+            </div>
+
+            <!-- Rentang visual visualizer (Linear Range Bar) -->
+            <div class="space-y-1.5 pt-2">
+              <div class="flex justify-between text-xs font-semibold">
+                <span class="text-emerald-700">&le; Cepat Laku (&le; {{ "%.1f"|format(q33) }}%)</span>
+                <span class="text-amber-700">Zona Sedang Laku</span>
+                <span class="text-red-700">Lambat Laku (&gt; +{{ "%.1f"|format(q67) }}%) &ge;</span>
+              </div>
+              <div class="h-3 w-full rounded-full bg-stone-200 flex overflow-hidden shadow-inner">
+                <div class="bg-emerald-500 w-[33.3%]"></div>
+                <div class="bg-amber-400 w-[33.3%]"></div>
+                <div class="bg-red-500 w-[33.4%]"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. INTERACTIVE PRICE SIMULATOR (SLIDER HARGA) -->
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-stone-200/90 space-y-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-base font-bold text-stone-800 flex items-center">
+                  <i class="fa-solid fa-arrows-split-up-and-left text-red-600 mr-2"></i>
+                  Simulator Penyesuaian Harga Jual
+                </h3>
+                <p class="text-xs text-stone-500 mt-0.5">Uji pengaruh penurunan atau kenaikan harga terhadap kecepatan serapan pasar</p>
+              </div>
+              <span class="text-xs font-bold px-2.5 py-1 rounded-full border transition-all"
+                    :class="{
+                      'bg-emerald-100 text-emerald-800 border-emerald-300': simStatus === 'Cepat',
+                      'bg-amber-100 text-amber-800 border-amber-300': simStatus === 'Sedang',
+                      'bg-red-100 text-red-800 border-red-300': simStatus === 'Lambat'
+                    }" x-text="'Simulasi: ' + simStatus"></span>
+            </div>
+
+            <!-- Interactive Slider Input -->
+            <div class="space-y-3">
+              <div class="flex justify-between items-baseline">
+                <span class="text-xs font-medium text-stone-500">Harga Penawaran Simulasi:</span>
+                <div class="text-right">
+                  <span class="text-xl font-black text-red-600" x-text="formatRupiah(sliderHarga)"></span>
+                  <span class="text-xs font-semibold ml-1.5"
+                        :class="simDeviasi >= 0 ? 'text-red-600' : 'text-emerald-600'"
+                        x-text="'(' + (simDeviasi >= 0 ? '+' : '') + simDeviasi + '%)'"></span>
+                </div>
+              </div>
+
+              <input type="range" 
+                     :min="sliderMin" 
+                     :max="sliderMax" 
+                     step="1000000"
+                     x-model.number="sliderHarga" 
+                     @input="handleSliderChange()"
+                     class="w-full h-2.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-orange-600">
+
+              <div class="flex justify-between text-[11px] text-stone-400 font-medium">
+                <span x-text="'Min: ' + formatRupiah(sliderMin)"></span>
+                <span class="text-orange-700 font-semibold" x-text="'Harga Wajar: ' + formatRupiah(result?.harga_wajar)"></span>
+                <span x-text="'Max: ' + formatRupiah(sliderMax)"></span>
+              </div>
+            </div>
+
+            <!-- Dynamic Simulation Impact Box -->
+            <div class="p-4 rounded-xl border flex items-start space-x-3 transition-colors"
+                 :class="{
+                   'bg-emerald-50/70 border-emerald-200 text-emerald-900': simStatus === 'Cepat',
+                   'bg-amber-50/70 border-amber-200 text-amber-900': simStatus === 'Sedang',
+                   'bg-red-50/70 border-red-200 text-red-900': simStatus === 'Lambat'
+                 }">
+              <div class="text-lg mt-0.5">
+                <i :class="{
+                  'fa-solid fa-circle-check text-emerald-600': simStatus === 'Cepat',
+                  'fa-solid fa-clock text-amber-600': simStatus === 'Sedang',
+                  'fa-solid fa-triangle-exclamation text-red-600': simStatus === 'Lambat'
+                }"></i>
+              </div>
+              <div class="text-xs sm:text-sm leading-relaxed">
+                <span class="font-bold">Dampak Perubahan:</span>
+                <span x-text="simulationNarrative"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. NLP KEYWORD INSPECTOR -->
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-stone-200/90 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-bold text-stone-800 flex items-center">
+                <i class="fa-solid fa-magnifying-glass-chart text-orange-600 mr-2"></i>
+                NLP Keyword Inspector (Pindai Iklan)
+              </h3>
+              <span class="text-xs text-stone-400">Deteksi Negasi & Istilah Otomotif</span>
+            </div>
+
+            <!-- Extracted Feature Badges (5 Fitur Teks dari Backend Baru) -->
+            <div class="flex flex-wrap gap-2 pt-1">
+              <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border"
+                    :class="result?.ada_garansi === 'Ya' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-stone-100 text-stone-600 border-stone-300'">
+                <i class="fa-solid mr-1.5" :class="result?.ada_garansi === 'Ya' ? 'fa-shield-halved text-emerald-600' : 'fa-xmark'"></i>
+                Garansi: <span class="ml-1" x-text="result?.ada_garansi"></span>
+              </span>
+
+              <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border"
+                    :class="result?.catatan_servis === 'Ya' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-stone-100 text-stone-600 border-stone-300'">
+                <i class="fa-solid mr-1.5" :class="result?.catatan_servis === 'Ya' ? 'fa-screwdriver-wrench text-emerald-600' : 'fa-xmark'"></i>
+                Catatan Servis: <span class="ml-1" x-text="result?.catatan_servis"></span>
+              </span>
+
+              <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border"
+                    :class="result?.pajak_hidup === 'Ya' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-stone-100 text-stone-600 border-stone-300'">
+                <i class="fa-solid mr-1.5" :class="result?.pajak_hidup === 'Ya' ? 'fa-file-shield text-amber-600' : 'fa-xmark'"></i>
+                Pajak Hidup: <span class="ml-1" x-text="result?.pajak_hidup"></span>
+              </span>
+
+              <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border"
+                    :class="result?.riwayat_negatif === 'Ya' ? 'bg-red-100 text-red-800 border-red-300 ring-2 ring-red-500/20' : 'bg-emerald-100 text-emerald-800 border-emerald-300'">
+                <i class="fa-solid mr-1.5" :class="result?.riwayat_negatif === 'Ya' ? 'fa-triangle-exclamation text-red-600' : 'fa-check text-emerald-600'"></i>
+                Riwayat Negatif: <span class="ml-1" x-text="result?.riwayat_negatif"></span>
+              </span>
+
+              <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border"
+                    :class="result?.indikasi_kredit_tdp ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-stone-100 text-stone-600 border-stone-300'">
+                <i class="fa-solid mr-1.5" :class="result?.indikasi_kredit_tdp ? 'fa-credit-card text-orange-600' : 'fa-xmark'"></i>
+                Indikasi TDP/Kredit: <span class="ml-1" x-text="result?.indikasi_kredit_tdp ? 'Ya' : 'Tidak'"></span>
+              </span>
+
+              <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                <i class="fa-solid fa-gauge mr-1.5 text-stone-500"></i>
+                Rasio KM: <span class="ml-1 font-bold" x-text="(result?.km_per_tahun).toLocaleString('id-ID') + ' km/tahun'"></span>
+              </span>
+            </div>
+
+            <!-- Highlighted Text Display Box -->
+            <div class="p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-xs sm:text-sm text-stone-700 leading-relaxed font-mono">
+              <div class="text-[11px] font-sans font-bold text-stone-400 uppercase tracking-wider mb-1.5">Hasil Pemindaian Teks Deskripsi:</div>
+              <div x-html="result?.nlp_scan?.html || '<span class=\'text-stone-400 italic\'>Deskripsi kosong</span>'"></div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 sm:gap-4 text-[11px] text-stone-500 pt-1">
+              <span class="flex items-center"><span class="w-2.5 h-2.5 rounded bg-emerald-400 inline-block mr-1"></span> Garansi / Servis / Bebas Banjir</span>
+              <span class="flex items-center"><span class="w-2.5 h-2.5 rounded bg-amber-400 inline-block mr-1"></span> Pajak Hidup</span>
+              <span class="flex items-center"><span class="w-2.5 h-2.5 rounded bg-orange-500 inline-block mr-1"></span> Skema Kredit / TDP</span>
+              <span class="flex items-center"><span class="w-2.5 h-2.5 rounded bg-red-500 inline-block mr-1"></span> ⚠️ Riwayat Negatif / Negasi</span>
+            </div>
+          </div>
+
+          <!-- 5. DIAGNOSTIK & PERINGATAN KECUKUPAN SAMPEL -->
+          <template x-if="result?.peringatan && result?.peringatan.length > 0">
+            <div class="bg-amber-50 rounded-2xl p-4 border border-amber-200 text-xs text-amber-800 space-y-2">
+              <div class="font-bold flex items-center text-amber-900">
+                <i class="fa-solid fa-triangle-exclamation mr-1.5 text-amber-600"></i>
+                Catatan Diagnostik Sistem & Validitas Data
+              </div>
+              <ul class="list-disc list-inside space-y-1 text-amber-800">
+                <template x-for="p in result.peringatan" :key="p">
+                  <li x-text="p"></li>
+                </template>
+              </ul>
+            </div>
+          </template>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-stone-950 text-stone-400 py-8 border-t border-stone-800 text-center text-xs">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="font-semibold text-stone-300">AutoLaku &bull; Sistem Pendukung Keputusan Penjual Mobil Bekas OLX Indonesia</p>
+      <p class="mt-1 text-stone-500">Implementasi Data Mining P3–P13: Regresi Gradient Boosting, NLP Extraction, & Kuantil Likuiditas</p>
+    </div>
+  </footer>
+
+  <!-- ALPINE.JS LOGIC -->
+  <script>
+    function autolakuApp() {
+      return {
+        brands: {{ daftar_merek | tojson }},
+        availableModels: {{ default_models | tojson }},
+        form: {
+          merek: "{{ default_merek }}",
+          model: "{{ default_models[0] if default_models else '' }}",
+          tahun: 2018,
+          transmisi: "Automatic",
+          km: 65000,
+          harga_iklan: 150000000,
+          deskripsi: "Mobil terawat mulus istimewa, servis berkala tercatat di bengkel resmi, bebas banjir dan tidak pernah tabrakan. Pajak hidup panjang.",
+          tipe_penjual: "Individu"
+        },
+        loading: false,
+        result: null,
+
+        // Simulator State
+        sliderHarga: 150000000,
+        sliderMin: 50000000,
+        sliderMax: 300000000,
+        simStatus: "Sedang",
+        simDeviasi: 0,
+        simulationNarrative: "",
+
+        async fetchModels() {
+          try {
+            const res = await fetch(`/api/models?merek=${encodeURIComponent(this.form.merek)}`);
+            const data = await res.json();
+            this.availableModels = data.models;
+            if (this.availableModels.length > 0) {
+              this.form.model = this.availableModels[0];
+            }
+          } catch (err) {
+            console.error("Gagal memuat model:", err);
+          }
+        },
+
+        async runPrediction() {
+          this.loading = true;
+          try {
+            const res = await fetch('/api/predict', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.form)
+            });
+
+            if (!res.ok) {
+              const err = await res.json();
+              alert(`Error: ${err.detail || 'Terjadi kesalahan sistem'}`);
+              this.loading = false;
+              return;
+            }
+
+            this.result = await res.json();
+            
+            // Inisialisasi simulator
+            const hw = this.result.harga_wajar;
+            this.sliderMin = Math.max(10000000, Math.floor(hw * 0.5 / 1000000) * 1000000);
+            this.sliderMax = Math.floor(hw * 1.8 / 1000000) * 1000000;
+            this.sliderHarga = Math.min(Math.max(this.form.harga_iklan, this.sliderMin), this.sliderMax);
+            
+            this.simStatus = this.result.status;
+            this.simDeviasi = this.result.deviasi_persen;
+            this.updateNarrative(this.result.harga_iklan, this.result.status);
+
+          } catch (err) {
+            alert(`Koneksi error: ${err.message}`);
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        simTimer: null,
+
+        handleSliderChange() {
+          if (!this.result) return;
+          const hw = this.result.harga_wajar;
+          const q33 = this.result.rentang_pasar.q33_persen;
+          const q67 = this.result.rentang_pasar.q67_persen;
+
+          const deviasi = ((this.sliderHarga - hw) / hw) * 100.0;
+          this.simDeviasi = Math.round(deviasi * 10) / 10;
+
+          let status = "Sedang";
+          if (deviasi <= q33) {
+            status = "Cepat";
+          } else if (deviasi <= q67) {
+            status = "Sedang";
+          } else {
+            status = "Lambat";
+          }
+
+          this.simStatus = status;
+          this.updateNarrative(this.sliderHarga, status);
+
+          clearTimeout(this.simTimer);
+          this.simTimer = setTimeout(async () => {
+            try {
+              const res = await fetch('/api/simulate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  merek: this.form.merek,
+                  model: this.form.model,
+                  tahun: this.form.tahun,
+                  transmisi: this.form.transmisi,
+                  km: this.form.km,
+                  harga_simulasi: this.sliderHarga,
+                  harga_awal: this.form.harga_iklan,
+                  deskripsi: this.form.deskripsi
+                })
+              });
+              if (res.ok) {
+                const simData = await res.json();
+                this.simStatus = simData.status_baru;
+                this.simDeviasi = simData.deviasi_baru;
+                this.updateNarrative(this.sliderHarga, simData.status_baru);
+              }
+            } catch (e) {
+              // fallback ke estimasi lokal jika jaringan sibuk
+            }
+          }, 120);
+        },
+
+        updateNarrative(hargaBaru, statusBaru) {
+          const hargaAwal = this.form.harga_iklan;
+          const selisih = hargaBaru - hargaAwal;
+          const pct = Math.abs(Math.round((selisih / hargaAwal) * 100));
+          const statusAwal = this.result.status;
+
+          if (hargaBaru === hargaAwal) {
+            this.simulationNarrative = `Saat ini berada di harga rencana awal ${this.formatRupiah(hargaAwal)} dengan estimasi berstatus ${statusAwal} Laku.`;
+          } else if (selisih < 0) {
+            if (statusAwal !== statusBaru) {
+              this.simulationNarrative = `Jika harga diturunkan sebesar ${this.formatRupiah(Math.abs(selisih))} (-${pct}%) menjadi ${this.formatRupiah(hargaBaru)}, status likuiditas berubah dari ${statusAwal} menjadi ${statusBaru} Laku! Daya serap pasar meningkat.`;
+            } else {
+              this.simulationNarrative = `Jika harga diturunkan sebesar ${this.formatRupiah(Math.abs(selisih))} (-${pct}%) menjadi ${this.formatRupiah(hargaBaru)}, status tetap ${statusBaru} Laku dengan posisi deviasi lebih kompetitif.`;
+            }
+          } else {
+            if (statusAwal !== statusBaru) {
+              this.simulationNarrative = `Jika harga dinaikkan sebesar ${this.formatRupiah(selisih)} (+${pct}%) menjadi ${this.formatRupiah(hargaBaru)}, status likuiditas berubah dari ${statusAwal} menjadi ${statusBaru} Laku (risiko waktu mengendap lebih lama).`;
+            } else {
+              this.simulationNarrative = `Jika harga dinaikkan sebesar ${this.formatRupiah(selisih)} (+${pct}%) menjadi ${this.formatRupiah(hargaBaru)}, status tetap ${statusBaru} Laku namun margin penawaran lebih tinggi.`;
+            }
+          }
+        },
+
+        formatRupiah(num) {
+          if (!num && num !== 0) return 'Rp 0';
+          return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+        },
+
+        resetForm() {
+          this.form.tahun = 2018;
+          this.form.transmisi = "Automatic";
+          this.form.km = 65000;
+          this.form.harga_iklan = 150000000;
+          this.result = null;
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoLaku - Intelligence Hub & Prediksi Likuiditas Mobil Bekas OLX</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+            },
+            accent: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-stone-50 text-slate-800 font-sans antialiased selection:bg-orange-500 selection:text-white" x-data="landingApp()">
+
+  <!-- TOP NAVIGATION BAR -->
+  <nav class="bg-white/95 backdrop-blur-md border-b border-orange-100 sticky top-0 z-50 transition-all shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3.5 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="/" class="flex items-center space-x-3 group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-orange-500 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/25 group-hover:scale-105 transition-transform">
+          <i class="fa-solid fa-car-burst text-lg"></i>
+        </div>
+        <div>
+          <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">AutoLaku</span>
+          <span class="hidden sm:inline-block ml-2 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">Data Mining Hub</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <div class="hidden md:flex items-center space-x-8 text-sm font-semibold text-stone-600">
+        <a href="#tentang" class="hover:text-orange-600 transition-colors">Deskripsi</a>
+        <a href="#cara-kerja" class="hover:text-orange-600 transition-colors">Cara Kerja</a>
+        <a href="#batasan" class="hover:text-red-600 transition-colors flex items-center">
+          <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xs mr-1.5"></i>
+          Batasan Sistem
+        </a>
+        <a href="#cakupan-data" class="hover:text-orange-600 transition-colors">Daftar Mobil</a>
+      </div>
+
+      <!-- Action Button to Simulator -->
+      <div class="flex items-center space-x-3">
+        <a href="/prediksi" class="inline-flex items-center space-x-2 bg-gradient-to-r from-red-600 via-orange-500 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2.5 rounded-xl shadow-md shadow-orange-500/25 hover:shadow-lg hover:shadow-orange-500/35 transition-all">
+          <span>Kalkulator Prediksi</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+      </div>
+
+    </div>
+  </nav>
+
+  <!-- HERO SECTION (DARK WARM RED/ORANGE THEME) -->
+  <header class="relative bg-gradient-to-b from-stone-950 via-neutral-900 to-red-950 text-white overflow-hidden py-20 lg:py-28">
+    <!-- Background Tech Glow -->
+    <div class="absolute inset-0 opacity-15 bg-[radial-gradient(#f97316_1px,transparent_1px)] [background-size:20px_20px]"></div>
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-br from-red-600/25 to-orange-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+      
+      <!-- Academic Pill -->
+      <div class="inline-flex items-center space-x-2 bg-orange-500/20 border border-orange-400/30 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold text-orange-200 shadow-inner">
+        <i class="fa-solid fa-graduation-cap text-amber-400"></i>
+        <span>Proyek Sains Data & Data Mining (P3–P13)</span>
+      </div>
+
+      <!-- Main Headline -->
+      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight max-w-4xl mx-auto">
+        Sistem Prediksi <span class="bg-gradient-to-r from-red-400 via-orange-400 to-amber-300 bg-clip-text text-transparent">Kecepatan Laku</span> Mobil Bekas OLX
+      </h1>
+
+      <!-- Description -->
+      <p class="max-w-2xl mx-auto text-stone-300 text-sm sm:text-lg leading-relaxed font-normal">
+        Evaluasi daya saing iklan mobil bekas Anda secara objektif. Menggabungkan estimasi <strong>Harga Pasar Wajar (ML Regression)</strong>, <strong>NLP Scanner Teks Iklan</strong>, dan <strong>Klasifikasi Likuiditas Unit</strong> sebelum tayang di OLX.
+      </p>
+
+      <!-- Primary Call-to-Action Buttons -->
+      <div class="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="/prediksi" class="w-full sm:w-auto inline-flex items-center justify-center space-x-3 bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 hover:from-red-700 hover:to-orange-600 text-white font-extrabold text-base px-8 py-4 rounded-2xl shadow-xl shadow-orange-500/30 hover:scale-102 transition-all">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>Buka Kalkulator Prediksi</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+
+        <a href="#cara-kerja" class="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-white/10 hover:bg-white/15 text-stone-200 border border-white/20 font-bold text-base px-6 py-4 rounded-2xl transition-all">
+          <i class="fa-solid fa-circle-play text-orange-400"></i>
+          <span>Pelajari Alur Sistem</span>
+        </a>
+      </div>
+
+      <!-- Quick Stats Counter Grid -->
+      <div class="pt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
+        <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5">
+          <div class="text-2xl sm:text-3xl font-black text-white">{{ total_data }}</div>
+          <div class="text-xs text-stone-400 font-medium mt-1">Data Iklan Bersih OLX</div>
+        </div>
+
+        <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5">
+          <div class="text-2xl sm:text-3xl font-black text-orange-400">{{ total_merek }}</div>
+          <div class="text-xs text-stone-400 font-medium mt-1">Merek Pabrikan Terekam</div>
+        </div>
+
+        <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5">
+          <div class="text-2xl sm:text-3xl font-black text-amber-400">99.79%</div>
+          <div class="text-xs text-stone-400 font-medium mt-1">F1-Score Model Terbaik</div>
+        </div>
+
+        <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5">
+          <div class="text-2xl sm:text-3xl font-black text-red-400">100% Bebas</div>
+          <div class="text-xs text-stone-400 font-medium mt-1">Data Leakage Split (80:20)</div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+
+  <!-- SECTION 1: DESKRIPSI SISTEM & PROBLEM STATEMENT -->
+  <section id="tentang" class="py-16 sm:py-24 bg-white border-b border-orange-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      
+      <div class="text-center max-w-3xl mx-auto space-y-3">
+        <h2 class="text-2xl sm:text-4xl font-extrabold text-stone-900 tracking-tight">
+          Mengapa AutoLaku Dibangun?
+        </h2>
+        <p class="text-stone-600 text-sm sm:text-base leading-relaxed">
+          Penjual mobil bekas perseorangan sering terjebak dalam perangkap strategi harga dan asimetri informasi pasar daring.
+        </p>
+      </div>
+
+      <!-- Problem vs Solution Comparison Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+        
+        <!-- Problem Card -->
+        <div class="bg-red-50/50 rounded-3xl p-6 sm:p-8 border border-red-200/80 space-y-4 flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-xl mb-4 shadow-sm">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-xl font-bold text-red-900">Masalah Penjual di OLX</h3>
+            <ul class="mt-4 space-y-3 text-sm text-stone-700 leading-relaxed">
+              <li class="flex items-start">
+                <i class="fa-solid fa-xmark text-red-500 mt-1 mr-2.5"></i>
+                <span><strong>Overpriced & Liquidity Risk:</strong> Menetapkan harga terlalu tinggi membuat unit terabaikan berbulan-bulan di garasi, biaya depresiasi bertambah.</span>
+              </li>
+              <li class="flex items-start">
+                <i class="fa-solid fa-xmark text-red-500 mt-1 mr-2.5"></i>
+                <span><strong>Underpriced:</strong> Takut tidak laku sehingga menjual terlalu murah, merugikan penjual hingga puluhan juta rupiah.</span>
+              </li>
+              <li class="flex items-start">
+                <i class="fa-solid fa-xmark text-red-500 mt-1 mr-2.5"></i>
+                <span><strong>Faktor Deskripsi Kualitatif Terabaikan:</strong> Penjual tidak menyadari bahwa istilah garansi, riwayat servis, bebas banjir, atau rasio KM tahunan sangat memengaruhi psikologi pembeli.</span>
+              </li>
+            </ul>
+          </div>
+          <div class="pt-4 border-t border-red-200 text-xs text-red-700 font-semibold">
+            &bull; Akibat: Iklan tidak kompetitif dan modal mengendap lama.
+          </div>
+        </div>
+
+        <!-- Solution Card -->
+        <div class="bg-orange-50/60 rounded-3xl p-6 sm:p-8 border border-orange-200/80 space-y-4 flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center text-xl mb-4 shadow-sm">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 class="text-xl font-bold text-orange-950">Solusi Berbasis Data Mining</h3>
+            <ul class="mt-4 space-y-3 text-sm text-stone-700 leading-relaxed">
+              <li class="flex items-start">
+                <i class="fa-solid fa-check text-orange-600 mt-1 mr-2.5"></i>
+                <span><strong>Estimasi Harga Wajar AI:</strong> Menghitung nilai riil kendaraan berdasarkan model regresi empiris ribuan transaksi aktif pasar OLX.</span>
+              </li>
+              <li class="flex items-start">
+                <i class="fa-solid fa-check text-orange-600 mt-1 mr-2.5"></i>
+                <span><strong>Prediksi Likuiditas 3 Status:</strong> Memprediksi apakah unit akan <strong>Cepat</strong> (&le; Q33), <strong>Sedang</strong>, atau <strong>Lambat Laku</strong> (&gt; Q67).</span>
+              </li>
+              <li class="flex items-start">
+                <i class="fa-solid fa-check text-orange-600 mt-1 mr-2.5"></i>
+                <span><strong>NLP Scanner Teks Iklan:</strong> Mendeteksi otomatis kata garansi, servis, bebas banjir, skema kredit TDP, dan memfilter negasi.</span>
+              </li>
+              <li class="flex items-start">
+                <i class="fa-solid fa-check text-orange-600 mt-1 mr-2.5"></i>
+                <span><strong>Simulator Penyesuaian Harga:</strong> Slider interaktif yang memandu penjual menemukan harga optimal sebelum menayangkan iklan.</span>
+              </li>
+            </ul>
+          </div>
+          <div class="pt-4 border-t border-orange-200 text-xs text-orange-800 font-semibold">
+            &bull; Hasil: Penjual mendapatkan strategi harga paling cepat laku dengan keuntungan maksimal.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- SECTION 2: CARA KERJA SISTEM (PIPELINE DATA MINING) -->
+  <section id="cara-kerja" class="py-16 sm:py-24 bg-stone-50 border-b border-orange-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      
+      <div class="text-center max-w-3xl mx-auto space-y-3">
+        <h2 class="text-2xl sm:text-4xl font-extrabold text-stone-900 tracking-tight">
+          Bagaimana AutoLaku Bekerja?
+        </h2>
+        <p class="text-stone-600 text-sm sm:text-base leading-relaxed">
+          Pipeline 4 tahap end-to-end yang dirancang dengan mematuhi prinsip pencegahan kebocoran data (*Data Leakage Prevention*).
+        </p>
+      </div>
+
+      <!-- Pipeline Steps Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Step 1 -->
+        <div class="bg-white rounded-2xl p-6 border border-stone-200 shadow-sm relative space-y-4 hover:shadow-md hover:border-red-300 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-red-100 text-red-700 font-black text-sm flex items-center justify-center">01</div>
+          <h3 class="text-base font-bold text-stone-800">Scraping & Cleaning</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Intersepsi respons API internal OLX via Playwright. Menyaring harga boneka (*99999999*), normalisasi ejaan model ambigu (Kijang vs Innova), dan imputasi median jarak tempuh.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="bg-white rounded-2xl p-6 border border-stone-200 shadow-sm relative space-y-4 hover:shadow-md hover:border-orange-300 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-orange-100 text-orange-700 font-black text-sm flex items-center justify-center">02</div>
+          <h3 class="text-base font-bold text-stone-800">NLP Text Scanner</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Menerjemahkan kosakata pasar melalui kamus slang otomotif Indonesia. Mendeteksi garansi, rekam servis, bebas banjir, serta skema kredit TDP lengkap dengan pendeteksi negasi.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="bg-white rounded-2xl p-6 border border-stone-200 shadow-sm relative space-y-4 hover:shadow-md hover:border-amber-300 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 font-black text-sm flex items-center justify-center">03</div>
+          <h3 class="text-base font-bold text-stone-800">Regresi & Deviasi Kuantil</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Gradient Boosting log-price menghitung harga wajar pasar. Selisih deviasi harga iklan diukur terhadap ambang persentil tertile data train (Q33: {{ "%.2f"|format(q33) }}% & Q67: {{ "%.2f"|format(q67) }}%).
+          </p>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="bg-white rounded-2xl p-6 border border-stone-200 shadow-sm relative space-y-4 hover:shadow-md hover:border-red-300 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-100 to-orange-100 text-red-700 font-black text-sm flex items-center justify-center">04</div>
+          <h3 class="text-base font-bold text-stone-800">Klasifikasi & Simulasi</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Model klasifikasi memetakan likuiditas unit ke dalam status <strong>Cepat</strong>, <strong>Sedang</strong>, atau <strong>Lambat</strong>, dilengkapi simulasi interaktif slider pergeseran harga real-time.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- SECTION 3: BATASAN SISTEM (SYSTEM BOUNDARIES & LIMITATIONS) -->
+  <section id="batasan" class="py-16 sm:py-24 bg-white border-b border-orange-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      
+      <div class="text-center max-w-3xl mx-auto space-y-3">
+        <h2 class="text-2xl sm:text-4xl font-extrabold text-stone-900 tracking-tight">
+          Batasan Penggunaan Sistem
+        </h2>
+        <p class="text-stone-600 text-sm sm:text-base leading-relaxed">
+          Sebagai sistem pendukung keputusan akademis, AutoLaku memiliki batasan domain yang wajib dipahami pengguna.
+        </p>
+      </div>
+
+      <!-- Limitations Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Batasan 1 (Utama) -->
+        <div class="bg-red-50/40 rounded-2xl p-6 border-2 border-red-400 shadow-sm space-y-3 relative overflow-hidden">
+          <div class="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-xl">
+            Batasan Kunci
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-car-side"></i>
+          </div>
+          <h3 class="text-base font-bold text-stone-900">Hanya untuk Mobil pada Dataset</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Sistem <strong>hanya dapat memprediksi jenis/model kendaraan yang ada di dalam dataset</strong> OLX Indonesia (1995–2026). Kombinasi merek atau seri baru yang tidak terdapat dalam data historis tidak dapat diprediksi secara valid demi mencegah halusinasi model ML.
+          </p>
+        </div>
+
+        <!-- Batasan 2 -->
+        <div class="bg-stone-50 rounded-2xl p-6 border border-stone-200 shadow-sm space-y-3 hover:border-amber-300 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-layer-group"></i>
+          </div>
+          <h3 class="text-base font-bold text-stone-900">Ambang Keyakinan Sampel (&lt; 15)</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Jika kombinasi mobil dan kelompok umur memiliki data pembanding <strong>kurang dari 15 unit</strong> di dataset, sistem otomatis mengaktifkan peringatan keyakinan rendah (*Low Confidence Warning*) dan beralih ke harga wajar fallback regresi usia.
+          </p>
+        </div>
+
+        <!-- Batasan 3 -->
+        <div class="bg-stone-50 rounded-2xl p-6 border border-stone-200 shadow-sm space-y-3 hover:border-orange-300 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-tag"></i>
+          </div>
+          <h3 class="text-base font-bold text-stone-900">Metode Proxy Labeling</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Karena OLX menghapus iklan yang telah laku tanpa mempublikasikan tanggal pasti terjual, kecepatan laku diukur secara kuantitatif melalui simpangan harga terhadap harga pasar wajar (*Perceived Market Liquidity*), bukan hari transaksi riil.
+          </p>
+        </div>
+
+        <!-- Batasan 4 -->
+        <div class="bg-stone-50 rounded-2xl p-6 border border-stone-200 shadow-sm space-y-3 hover:border-red-300 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-calendar-days"></i>
+          </div>
+          <h3 class="text-base font-bold text-stone-900">Rentang Tahun Perakitan</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Data pelatihan mencakup mobil perakitan tahun <strong>1995 hingga 2026</strong>. Mobil klasik di bawah 1995 atau mobil masa depan di atas 2026 berada di luar rentang kurva depresiasi yang dilatih.
+          </p>
+        </div>
+
+        <!-- Batasan 5 -->
+        <div class="bg-stone-50 rounded-2xl p-6 border border-stone-200 shadow-sm space-y-3 hover:border-orange-300 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-wrench"></i>
+          </div>
+          <h3 class="text-base font-bold text-stone-900">Kondisi Fisik Kasat Mata</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Inferensi bertumpu pada spesifikasi numerik (KM, usia) dan draf klaim teks iklan (NLP). Kerusakan mekanis tersembunyi yang tidak tertulis dalam deskripsi tidak dapat diverifikasi oleh model.
+          </p>
+        </div>
+
+        <!-- Batasan 6 -->
+        <div class="bg-stone-50 rounded-2xl p-6 border border-stone-200 shadow-sm space-y-3 hover:border-amber-300 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+          <h3 class="text-base font-bold text-stone-900">Fluktuasi Tren Pasar</h3>
+          <p class="text-xs text-stone-600 leading-relaxed">
+            Model merefleksikan dinamika harga saat data di-scrape dari OLX Indonesia. Perubahan drastis seperti kebijakan pajak barang mewah baru atau kenaikan BBM ekstrem dapat menggeser preferensi pembeli.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- SECTION 4: DAFTAR MOBIL YANG DIDUKUNG (CAKUPAN DATASET & FOTO MOBIL) -->
+  <section id="cakupan-data" class="py-16 sm:py-24 bg-stone-50 border-b border-orange-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center space-x-2 bg-orange-100 border border-orange-200 px-3 py-1 rounded-full text-xs font-bold text-orange-700 mb-2">
+            <i class="fa-solid fa-car"></i>
+            <span>Cakupan Basis Data OLX Indonesia</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">
+            Merek yang Didukung dalam Dataset
+          </h2>
+          <p class="text-stone-600 text-xs sm:text-sm mt-1">
+            Menampilkan <strong>{{ total_merek }} merek</strong> dengan <strong>{{ total_data }} unit iklan</strong> terverifikasi, lengkap dengan foto unit representatif setiap merek.
+          </p>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="flex items-center space-x-2">
+          <div class="relative w-full sm:w-72">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-xs"></i>
+            <input type="text" 
+                   x-model="searchBrand" 
+                   placeholder="Cari merek mobil (cth: Toyota, Honda)..." 
+                   class="w-full pl-9 pr-4 py-2 bg-white border border-stone-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-orange-500 focus:border-orange-500 shadow-2xs">
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Counter -->
+      <div class="flex items-center justify-between text-xs text-stone-500 border-b border-stone-200/80 pb-3">
+        <div>
+          Menampilkan <span class="font-extrabold text-orange-600" x-text="filteredBrands.length"></span> dari {{ total_merek }} merek mobil
+        </div>
+        <div class="text-[11px] text-stone-400">
+          <i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> Data historis terverifikasi dalam dataset
+        </div>
+      </div>
+
+      <!-- Brands Photo Grid (Informational Display Cards) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <template x-for="item in filteredBrands" :key="item.merek">
+          <div class="bg-white rounded-2xl border border-stone-200/90 shadow-2xs hover:shadow-md hover:border-orange-300 transition-all duration-300 flex flex-col overflow-hidden group">
+            
+            <!-- Photo Container -->
+            <div class="relative w-full h-32 bg-stone-100 overflow-hidden">
+              <img :src="item.foto_url" 
+                   :alt="item.merek + ' ' + item.model_populer" 
+                   loading="lazy" 
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                   @error="$el.style.display='none'; $el.nextElementSibling.style.display='flex'">
+              
+              <!-- Fallback icon jika gambar gagal dimuat -->
+              <div style="display: none;" class="w-full h-full flex flex-col items-center justify-center bg-stone-100 text-stone-400">
+                <i class="fa-solid fa-car-side text-2xl mb-1 text-orange-400"></i>
+                <span class="text-[10px] font-bold text-stone-500" x-text="item.merek"></span>
+              </div>
+
+              <!-- Badge Total Iklan -->
+              <span class="absolute top-2 right-2 bg-stone-900/85 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs border border-white/20">
+                <span x-text="item.total"></span> unit
+              </span>
+
+              <!-- Scrim Overlay & Model Label -->
+              <div class="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-stone-950/75 via-stone-950/20 to-transparent"></div>
+              <div class="absolute bottom-1.5 left-2.5 right-2.5 text-[11px] font-semibold text-white truncate drop-shadow-xs" x-text="item.model_populer"></div>
+            </div>
+
+            <!-- Card Body (Text Info Only, No Click Navigation) -->
+            <div class="p-3 flex items-center justify-between">
+              <div>
+                <h3 class="text-xs sm:text-sm font-extrabold text-stone-800 tracking-tight" x-text="item.merek"></h3>
+                <p class="text-[11px] text-stone-400 mt-0.5" x-text="item.total + ' listing iklan'"></p>
+              </div>
+              <div class="w-6 h-6 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 text-[11px]">
+                <i class="fa-solid fa-check"></i>
+              </div>
+            </div>
+
+          </div>
+        </template>
+      </div>
+
+      <!-- Empty State if Search yields 0 -->
+      <template x-if="filteredBrands.length === 0">
+        <div class="bg-white rounded-2xl p-10 text-center border border-dashed border-stone-300 max-w-md mx-auto space-y-3">
+          <div class="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-xl">
+            <i class="fa-solid fa-car-burst"></i>
+          </div>
+          <h4 class="text-sm font-bold text-stone-800">Merek Tidak Ditemukan</h4>
+          <p class="text-xs text-stone-500">
+            Kata kunci "<span class="font-semibold text-orange-600" x-text="searchBrand"></span>" tidak ada dalam {{ total_merek }} merek dataset OLX.
+          </p>
+          <button @click="searchBrand = ''" class="inline-flex items-center text-xs font-bold text-orange-600 hover:underline">
+            <i class="fa-solid fa-rotate-left mr-1"></i> Reset Pencarian
+          </button>
+        </div>
+      </template>
+
+    </div>
+  </section>
+
+
+  <!-- FINAL BOTTOM CTA SECTION (RED & ORANGE GRADIENT) -->
+  <section class="py-16 sm:py-20 bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 text-white text-center relative overflow-hidden shadow-lg">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-6">
+      
+      <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight">
+        Siap Menguji Strategi Harga & Likuiditas Mobil Anda?
+      </h2>
+      <p class="text-orange-100 text-sm sm:text-base max-w-xl mx-auto font-normal">
+        Buka halaman aplikasi kalkulator prediksi sekarang untuk menganalisis kecepatan laku dan menjalankan simulasi slider harga interaktif.
+      </p>
+
+      <div class="pt-2">
+        <a href="/prediksi" class="inline-flex items-center space-x-3 bg-white text-red-600 hover:bg-orange-50 font-black text-base px-8 py-4 rounded-2xl shadow-xl hover:scale-105 transition-all">
+          <i class="fa-solid fa-calculator text-orange-600"></i>
+          <span>Buka Kalkulator Prediksi Sekarang</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- FOOTER -->
+  <!-- <footer class="bg-stone-950 text-stone-400 py-10 border-t border-stone-800 text-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+      <div>
+        <span class="text-white font-extrabold text-sm">AutoLaku &bull; Proyek Data Mining Semester 5</span>
+        <p class="text-stone-500 mt-1">Sains Data: Web Scraping, Feature Engineering, Regression, & Classification</p>
+      </div>
+      <div>
+        <a href="/prediksi" class="text-orange-400 hover:text-orange-300 font-bold">Menuju Aplikasi Prediksi &rarr;</a>
+      </div>
+    </div>
+  </footer> -->
+
+  <!-- ALPINE.JS LOGIC -->
+  <script>
+    function landingApp() {
+      return {
+        searchBrand: "",
+        brandsList: {{ merek_summary | tojson }},
+
+        get filteredBrands() {
+          if (!this.searchBrand) return this.brandsList;
+          const q = this.searchBrand.toLowerCase().trim();
+          return this.brandsList.filter(b => 
+            (b.merek && b.merek.toLowerCase().includes(q)) ||
+            (b.model_populer && b.model_populer.toLowerCase().includes(q))
+          );
+        }
+      }
+    }
+  </script>
+</body>
+</html>
