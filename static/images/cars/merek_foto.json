@@ -1,0 +1,212 @@
+{
+  "Toyota": {
+    "merek": "Toyota",
+    "model_populer": "Toyota Innova",
+    "foto_url": "/static/images/cars/toyota.jpg"
+  },
+  "Honda": {
+    "merek": "Honda",
+    "model_populer": "Honda Brio",
+    "foto_url": "/static/images/cars/honda.jpg"
+  },
+  "Mitsubishi": {
+    "merek": "Mitsubishi",
+    "model_populer": "Mitsubishi Xpander",
+    "foto_url": "/static/images/cars/mitsubishi.jpg"
+  },
+  "Mercedes-Benz": {
+    "merek": "Mercedes-Benz",
+    "model_populer": "Mercedes-Benz C-Class",
+    "foto_url": "/static/images/cars/mercedes_benz.jpg"
+  },
+  "Daihatsu": {
+    "merek": "Daihatsu",
+    "model_populer": "Daihatsu Terios",
+    "foto_url": "/static/images/cars/daihatsu.jpg"
+  },
+  "Bmw": {
+    "merek": "Bmw",
+    "model_populer": "BMW Seri 3",
+    "foto_url": "/static/images/cars/bmw.jpg"
+  },
+  "Suzuki": {
+    "merek": "Suzuki",
+    "model_populer": "Suzuki Ertiga",
+    "foto_url": "/static/images/cars/suzuki.jpg"
+  },
+  "Hyundai": {
+    "merek": "Hyundai",
+    "model_populer": "Hyundai Stargazer",
+    "foto_url": "/static/images/cars/hyundai.jpg"
+  },
+  "Nissan": {
+    "merek": "Nissan",
+    "model_populer": "Nissan Livina",
+    "foto_url": "/static/images/cars/nissan.jpg"
+  },
+  "Mazda": {
+    "merek": "Mazda",
+    "model_populer": "Mazda CX-5",
+    "foto_url": "/static/images/cars/mazda.jpg"
+  },
+  "Wuling": {
+    "merek": "Wuling",
+    "model_populer": "Wuling Almaz",
+    "foto_url": "/static/images/cars/wuling.jpg"
+  },
+  "Lexus": {
+    "merek": "Lexus",
+    "model_populer": "Lexus RX",
+    "foto_url": "/static/images/cars/lexus.jpg"
+  },
+  "Byd": {
+    "merek": "Byd",
+    "model_populer": "BYD Atto 3",
+    "foto_url": "/static/images/cars/byd.jpg"
+  },
+  "Chery": {
+    "merek": "Chery",
+    "model_populer": "Chery Tiggo / Omoda",
+    "foto_url": "/static/images/cars/chery.jpg"
+  },
+  "Mini": {
+    "merek": "Mini",
+    "model_populer": "MINI Cooper",
+    "foto_url": "/static/images/cars/mini.jpg"
+  },
+  "Chevrolet": {
+    "merek": "Chevrolet",
+    "model_populer": "Chevrolet Trax",
+    "foto_url": "/static/images/cars/chevrolet.jpg"
+  },
+  "Ford": {
+    "merek": "Ford",
+    "model_populer": "Ford Ranger",
+    "foto_url": "/static/images/cars/ford.jpg"
+  },
+  "Kia": {
+    "merek": "Kia",
+    "model_populer": "Kia Seltos",
+    "foto_url": "/static/images/cars/kia.jpg"
+  },
+  "Land Rover": {
+    "merek": "Land Rover",
+    "model_populer": "Range Rover Evoque",
+    "foto_url": "/static/images/cars/land_rover.jpg"
+  },
+  "Jeep": {
+    "merek": "Jeep",
+    "model_populer": "Jeep Wrangler",
+    "foto_url": "/static/images/cars/jeep.jpg"
+  },
+  "Volkswagen": {
+    "merek": "Volkswagen",
+    "model_populer": "VW Golf",
+    "foto_url": "/static/images/cars/volkswagen.jpg"
+  },
+  "Subaru": {
+    "merek": "Subaru",
+    "model_populer": "Subaru Forester",
+    "foto_url": "/static/images/cars/subaru.jpg"
+  },
+  "Gwm": {
+    "merek": "Gwm",
+    "model_populer": "GWM Haval / Tank",
+    "foto_url": "/static/images/cars/gwm.jpg"
+  },
+  "Datsun": {
+    "merek": "Datsun",
+    "model_populer": "Datsun Go",
+    "foto_url": "/static/images/cars/datsun.jpg"
+  },
+  "Mg": {
+    "merek": "Mg",
+    "model_populer": "MG ZS",
+    "foto_url": "/static/images/cars/mg.jpg"
+  },
+  "Isuzu": {
+    "merek": "Isuzu",
+    "model_populer": "Isuzu MU-X",
+    "foto_url": "/static/images/cars/isuzu.jpg"
+  },
+  "Porsche": {
+    "merek": "Porsche",
+    "model_populer": "Porsche Macan",
+    "foto_url": "/static/images/cars/porsche.jpg"
+  },
+  "Audi": {
+    "merek": "Audi",
+    "model_populer": "Audi A4",
+    "foto_url": "/static/images/cars/audi.jpg"
+  },
+  "Denza": {
+    "merek": "Denza",
+    "model_populer": "Denza D9",
+    "foto_url": "/static/images/cars/denza.jpg"
+  },
+  "Mini Cooper": {
+    "merek": "Mini Cooper",
+    "model_populer": "MINI Cooper S",
+    "foto_url": "/static/images/cars/mini_cooper.jpg"
+  },
+  "Tesla": {
+    "merek": "Tesla",
+    "model_populer": "Tesla Model 3",
+    "foto_url": "/static/images/cars/tesla.jpg"
+  },
+  "Peugeot": {
+    "merek": "Peugeot",
+    "model_populer": "Peugeot 3008",
+    "foto_url": "/static/images/cars/peugeot.jpg"
+  },
+  "Fiat": {
+    "merek": "Fiat",
+    "model_populer": "Fiat 500",
+    "foto_url": "/static/images/cars/fiat.jpg"
+  },
+  "Proton": {
+    "merek": "Proton",
+    "model_populer": "Proton Exora",
+    "foto_url": "/static/images/cars/proton.jpg"
+  },
+  "Hummer": {
+    "merek": "Hummer",
+    "model_populer": "Hummer H2",
+    "foto_url": "/static/images/cars/hummer.jpg"
+  },
+  "Renault": {
+    "merek": "Renault",
+    "model_populer": "Renault Kwid",
+    "foto_url": "/static/images/cars/renault.jpg"
+  },
+  "Baic": {
+    "merek": "Baic",
+    "model_populer": "BAIC BJ40",
+    "foto_url": "/static/images/cars/baic.jpg"
+  },
+  "Aston Martin": {
+    "merek": "Aston Martin",
+    "model_populer": "Aston Martin Vantage",
+    "foto_url": "/static/images/cars/aston_martin.jpg"
+  },
+  "Maserati": {
+    "merek": "Maserati",
+    "model_populer": "Maserati Ghibli",
+    "foto_url": "/static/images/cars/maserati.jpg"
+  },
+  "Opel": {
+    "merek": "Opel",
+    "model_populer": "Opel Astra",
+    "foto_url": "/static/images/cars/opel.jpg"
+  },
+  "Jetour": {
+    "merek": "Jetour",
+    "model_populer": "Jetour Dashing",
+    "foto_url": "/static/images/cars/jetour.jpg"
+  },
+  "Timor": {
+    "merek": "Timor",
+    "model_populer": "Timor S515",
+    "foto_url": "/static/images/cars/timor.jpg"
+  }
+}
