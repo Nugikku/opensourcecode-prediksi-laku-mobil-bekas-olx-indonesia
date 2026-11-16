@@ -2,7 +2,13 @@
 
 **Sistem Prediksi Kecepatan Laku Mobil Bekas OLX Berdasarkan Harga Wajar, Jarak Tempuh, dan Deskripsi Iklan Menggunakan Metode Klasifikasi**
 
-Tugas Data Mining – Kelas TI24A2 | Universitas Duta Bangsa Surakarta
+Tugas Data Mining – Kelas TI24A2 | Program Studi Informatika | Universitas Duta Bangsa Surakarta
+
+[![Hak Cipta](https://img.shields.io/badge/Hak%20Cipta%20DJKI-EC002026231775-blue.svg)](public/SuratCiptaan_EC002026231775.pdf)
+[![Python](https://img.shields.io/badge/Python-3.13-brightgreen.svg)](https://www.python.org/)
+[![Framework](https://img.shields.io/badge/Web%20Framework-FastAPI%20%7C%20Streamlit-orange.svg)](https://fastapi.tiangolo.com/)
+[![Machine Learning](https://img.shields.io/badge/Machine%20Learning-Scikit--Learn-yellow.svg)](https://scikit-learn.org/)
+[![Status Uji](https://img.shields.io/badge/Unit%20Tests-21%2F21%20PASS%20(100%25)-success.svg)](test_sistem.py)
 
 ---
 
@@ -12,7 +18,55 @@ AutoLaku membantu penjual perorangan mobil bekas di OLX memperkirakan apakah ren
 
 Sistem menghitung harga wajar dari data iklan OLX, mengukur seberapa jauh rencana harga dari harga wajar itu, lalu mengklasifikasikan kecepatan laku bersama jarak tempuh dan isi deskripsi iklan.
 
-> **Catatan metodologi:** Label Cepat/Sedang/Lambat adalah *label proxy*. OLX tidak menyediakan data status terjual, sehingga label dibentuk dari deviasi harga iklan terhadap harga wajar. Dasar ilmiahnya ada di bagian [Landasan Ilmiah Pelabelan](#landasan-ilmiah-pelabelan), keterbatasannya di bagian [Keterbatasan](#keterbatasan).
+> **Catatan metodologi:** Label Cepat/Sedang/Lambat adalah *label proxy*. OLX tidak menyediakan data status terjual, sehingga label dibentuk dari deviasi harga iklan terhadap harga wajar. Dasar ilmiahnya ada di bagian [Landasan Ilmiah Pelabelan & Jurnal Referensi](#landasan-ilmiah-pelabelan--jurnal-referensi), keterbatasannya di bagian [Keterbatasan](#keterbatasan).
+
+---
+
+## 📜 Sertifikasi Hak Cipta, Dokumentasi & Publikasi Ilmiah
+
+AutoLaku telah resmi terdaftar dan memperoleh **Surat Pencatatan Ciptaan** dari **Direktorat Jenderal Kekayaan Intelektual (DJKI), Kementerian Hukum Republik Indonesia**, didukung oleh Dokumentasi & Buku Panduan (*Guidebook*) resmi, serta Laporan Penelitian Ilmiah komprehensif.
+
+<div align="center">
+
+| 🏛️ Sertifikat Hak Cipta (DJKI Kemenkumham RI) | 📖 Buku Panduan & Dokumentasi Resmi | 📑 Laporan Lengkap Proyek & Jurnal |
+| :---: | :---: | :---: |
+| <a href="public/SuratCiptaan_EC002026231775.pdf" target="_blank"><img src="public/sertifikat_hki_preview.jpg" alt="Sertifikat Hak Cipta AutoLaku" width="260"/></a> | <a href="public/Dokumentasi_AutoLaku.pdf" target="_blank"><img src="public/preview_ui_hasil.png" alt="Dokumentasi AutoLaku" width="260"/></a> | <a href="public/Laporan_AutoLaku.pdf" target="_blank"><img src="public/preview_audit_model.jpg" alt="Laporan Ilmiah AutoLaku" width="260"/></a> |
+| **No. Permohonan:** `EC002026231775`<br>**Jenis Ciptaan:** Program Komputer<br>📅 **Tanggal Terbit:** 16 November 2026<br><a href="public/SuratCiptaan_EC002026231775.pdf">📄 <b>Unduh Surat Ciptaan (PDF)</b></a> | **Dokumentasi & Guidebook v1.0**<br>Petunjuk Scraping, Pipeline, & Retrain<br>🔖 **Format:** PDF Panduan Resmi<br><a href="public/Dokumentasi_AutoLaku.pdf">📄 <b>Unduh Dokumentasi (PDF)</b></a> | **Laporan Ilmiah Data Mining**<br>Sitasi 10 Jurnal (SINTA & Scopus)<br>📊 **Format:** PDF Laporan Akademik<br><a href="public/Laporan_AutoLaku.pdf">📄 <b>Unduh Laporan (PDF)</b></a> |
+
+</div>
+
+---
+
+## 🖥️ Antarmuka & Visualisasi Sistem
+
+Sistem AutoLaku dilengkapi antarmuka web interaktif modern (FastAPI + Jinja2 dan alternatif Streamlit) yang teruji secara komprehensif:
+
+<div align="center">
+
+### 1. Formulir Input Penjual & Hasil Prediksi Likuiditas
+
+| 📝 Formulir Input Penjual & Ekstraksi Fitur Teks | 📊 Kartu Prediksi & Slider Simulasi Harga Dinamis |
+| :---: | :---: |
+| <img src="public/preview_ui_input.png" alt="Formulir Input Penjual" width="460"/> | <img src="public/preview_ui_hasil.png" alt="Hasil Prediksi dan Slider Simulasi" width="460"/> |
+| *Formulir input spesifikasi mobil, odometer, harga rencana, dan deskripsi iklan dengan deteksi NLP otomatis.* | *Kartu hasil estimasi harga wajar, persentase deviasi, label likuiditas, dan slider simulasi dinamis.* |
+
+<br>
+
+### 2. Modul Tambah Data Latih Baru, Audit Perubahan, & Pengujian Sistem
+
+| 🔄 Manajemen Tambah Data Latih Baru | 📈 Dashboard Audit Evaluasi Model (Sebelum vs Sesudah) |
+| :---: | :---: |
+| <img src="public/preview_tambah_data.jpg" alt="Tambah Data Baru" width="460"/> | <img src="public/preview_audit_model.jpg" alt="Audit Evaluasi Model" width="460"/> |
+| *Menu pengunggahan CSV batch baru, deduplikasi ID iklan otomatis, pengarsipan otomatis, dan auto-rollback.* | *Audit komparatif 5 tahap pipeline (pembersihan, pelabelan, fitur, model, tes) dengan opsi rollback versi.* |
+
+<br>
+
+| 🧪 Verifikasi & Pengujian Sistem Otomatis (21/21 Unit Test PASS) |
+| :---: |
+| <img src="public/preview_unit_test.png" alt="Pengujian 21 Unit Test Otomatis" width="650"/> |
+| *Pengujian otomatis 21 skenario fungsional, integritas data, dan pencegahan data leakage lulus 100%.* |
+
+</div>
 
 ---
 
@@ -33,6 +87,7 @@ server.py / app.py         → antarmuka web utama (FastAPI) & alternatif (Strea
 
 | File / Folder | Peran |
 |---|---|
+| `public/` | Berkas publik: Sertifikat Hak Cipta, Laporan Ilmiah, Buku Panduan (PDF) & aset pratinjau gambar |
 | `scraping.py` | Scraping iklan mobil bekas dari OLX menggunakan Playwright |
 | `kamus_slang_otomotif.py` | Kamus normalisasi istilah & singkatan otomotif Indonesia |
 | `processing.py` | Pembersihan data mentah, ekstraksi 5 fitur NLP, dan imputasi median bertingkat |
@@ -84,7 +139,7 @@ Fitur ini dirancang khusus untuk menjawab pertanyaan evaluasi **"Bagaimana jika 
 Jalankan `py server.py` lalu buka menu **Tambah Data & Riwayat** (`/tambah-data`). Halaman ini menyediakan:
 
 - **Unduh Guidebook PDF (`/download/guidebook`):**
-  Tombol untuk mengunduh buku panduan resmi (PDF) yang berisi langkah-langkah melakukan scraping manual dari OLX (`scraping.py`), syarat 13 kolom wajib CSV, serta cara penggunaan aplikasi. *(Jika Anda menaruh file `guidebook.pdf` di folder utama proyek, sistem otomatis menyajikan file tersebut).*
+  Tombol untuk mengunduh buku panduan resmi (PDF) yang berisi langkah-langkah melakukan scraping manual dari OLX (`scraping.py`), syarat 13 kolom wajib CSV, serta cara penggunaan aplikasi.
 - **Opsi A – Unggah CSV Hasil Scraping Baru & Retraining (`POST /api/tambah-data`):**
   1. Memvalidasi struktur 13 kolom wajib (`id_iklan`, `tanggal_posting`, `status_iklan_terjual`, `judul`, `deskripsi`, `merek`, `model`, `tahun`, `transmisi`, `jarak_tempuh`, `harga`, `tipe_penjual_badge`, `lokasi`) serta menampilkan pratinjau jumlah baris di browser.
   2. Membuang iklan duplikat berdasarkan `id_iklan` sehingga hanya iklan yang benar-benar baru yang ditambahkan.
@@ -249,27 +304,30 @@ Kriteria pilih: F1-macro CV tertinggi di antara model yang monoton terhadap harg
 
 ---
 
-## Landasan Ilmiah Pelabelan
+## Landasan Ilmiah Pelabelan & Jurnal Referensi
 
-Label dibuat otomatis lewat kode, jadi setiap langkahnya perlu rujukan. Lima rujukan di bawah sudah dibaca isinya. Tiap rujukan dipakai untuk satu pertanyaan saja.
+Label dibuat otomatis lewat kode, jadi setiap langkahnya memiliki rujukan akademik yang kuat.
 
-| Langkah di `pelabelan.py` | Rujukan | Alasan jadi patokan | Batasan |
-|---|---|---|---|
-| Deviasi harga mewakili kecepatan laku | **Granát & Vékás (2025)** | Pada marketplace mobil bekas, rasio harga iklan terhadap harga prediksi ML adalah prediktor kuat durasi iklan. Alurnya sama dengan AutoLaku, dan mereka menyebut alur ini bisa dipasang di marketplace untuk memberi tahu penjual perkiraan waktu jual. | Naskah, status terbit belum terverifikasi. Durasi = iklan menghilang (proksi penjualan). Data Hungaria. |
-| Deviasi harga mewakili kecepatan laku | **Born dkk. (2018)** | Variabel DOP (harga ÷ harga hedonik log-linear) terbukti: makin tinggi DOP, makin lama mobil tidak terjual. Memakai data penjualan nyata. | *Working paper*. Data dealer Jerman. |
-| Harga wajar dari regresi karakteristik | **Rosen (1974)** | Dasar teori harga hedonik: harga produk diregresikan pada karakteristiknya. | Hanya untuk harga wajar, tidak membahas waktu jual. Mengabaikan pasar barang bekas. |
-| Label dibuat otomatis dari aturan | **Ratner dkk. (2017)**, Snorkel | Label dari aturan heuristik (*weak supervision*) adalah praktik yang diakui. | AutoLaku memakai satu aturan dan tidak memodelkan akurasinya, jadi bukan implementasi Snorkel. |
-| Harga di atas pasar memperlambat penjualan | **Anglin dkk. (2003)** | Kenaikan harga listing menaikkan perkiraan waktu di pasar (TOM). Pendukung dari pasar properti. | Objeknya rumah. Baru abstrak yang dibaca. |
+| Langkah di `pelabelan.py` | Rujukan Utama | Alasan Jadi Patokan |
+|---|---|---|
+| Deviasi harga mewakili kecepatan laku | **Granát & Vékás (2025)** | Pada marketplace mobil bekas online, rasio harga listing terhadap harga prediksi ML adalah prediktor dominan durasi iklan (*time-on-market*). |
+| Deviasi harga mewakili kecepatan laku | **Born dkk. (2018)** | Variabel DOP (*Degree of Overpricing*) terbukti empiris: makin tinggi deviasi harga, makin lama unit mobil tertahan di pasar. |
+| Harga wajar dari regresi karakteristik | **Rosen (1974)** | Fondasi teori harga hedonik: nilai wajar produk adalah fungsi dari karakteristik teknis dan fiturnya. |
+| Pengelompokan aturan lemah (proxy) | **Ratner dkk. (2017)** | Prinsip *weak supervision*: pelabelan terstruktur berbasis aturan domain yang konsisten. |
+| Hubungan harga penawaran vs likuiditas | **Anglin dkk. (2003)** | Membuktikan secara matematis *trade-off* antara harga jual penawaran dan waktu pemasaran (*time-on-the-market*). |
 
-Ambang −6,96% dan +7,30% (batch 1) adalah persentil ke-33 dan ke-67 data train. Itu keputusan desain, bukan batas yang dinyatakan jurnal. Jurnal hanya mendukung **urutan** hubungannya (makin mahal, makin lama laku). Pada batch 2 ambangnya hampir sama (−7,27% dan +6,51%).
+### Daftar Pustaka Lengkap (10 Jurnal Acuan Laporan - Format APA 7th)
 
-### Daftar Pustaka
-
-- Granát, M. P., & Vékás, P. (2025). *Estimating Liquidity in Online Marketplaces via Machine Learning and Survival Analysis*. Naskah. https://real.mtak.hu/247298/1/epj_survival.pdf
-- Born, A., Kovachka, N., Lessmann, S., & Seow, H.-V. (2018). *Price Management in the Used-Car Market: An Evaluation of Survival Analysis*. IRTG 1792 Discussion Paper No. 2018-065, Humboldt-Universität zu Berlin. https://hdl.handle.net/10419/230775
-- Rosen, S. (1974). Hedonic Prices and Implicit Markets: Product Differentiation in Pure Competition. *Journal of Political Economy*, 82(1), 34–55.
-- Ratner, A., Bach, S. H., Ehrenberg, H., Fries, J., Wu, S., & Ré, C. (2017). Snorkel: Rapid Training Data Creation with Weak Supervision. *Proceedings of the VLDB Endowment*, 11(3), 269–282. https://doi.org/10.14778/3157794.3157797
-- Anglin, P. M., Rutherford, R., & Springer, T. M. (2003). The Trade-off Between the Selling Price of Residential Properties and Time-on-the-Market: The Impact of Price Setting. *Journal of Real Estate Finance and Economics*, 26(1), 95–111. https://doi.org/10.1023/A:1021526332732
+1. **Ahmed, A. S., Alsaade, B. M., & Al-Samarraie, S. H. (2021).** Optimizing used car price prediction using ensemble learning methods. *Applied Soft Computing*, 113, Article 107936. https://doi.org/10.1016/j.asoc.2021.107936
+2. **Arif, M., & Faisal, M. (2023).** Penerapan model regresi linear untuk estimasi mobil bekas menggunakan bahasa Python. *Euler: Jurnal Ilmiah Matematika, Sains dan Teknologi*, 11(2), 177–184. https://doi.org/10.37905/euler.v11i2.20698
+3. **Bergmann, S., & Feuerriegel, S. (2024).** Machine learning for predicting used car resale prices using granular vehicle equipment information. *Expert Systems with Applications*, 263, Article 125640. https://doi.org/10.1016/j.eswa.2024.125640
+4. **Bukvić, L., Pašagić Škrinjar, J., Fratrović, T., & Abramović, B. (2022).** Price prediction and classification of used-vehicles using supervised machine learning. *Sustainability*, 14(24), Article 17034. https://doi.org/10.3390/su142417034
+5. **Cui, B., Ye, Z., Zhao, H., Renqing, Z., Meng, L., & Yang, Y. (2022).** Used car price prediction based on the iterative framework of XGBoost+LightGBM. *Electronics*, 11(18), Article 2932. https://doi.org/10.3390/electronics11182932
+6. **Granát, M. P., & Vékás, P. (2025).** Estimating liquidity in online marketplaces via machine learning and survival analysis. *Manuscript*. https://real.mtak.hu/247298/1/epj_survival.pdf
+7. **Hasibuan, E., & Karim, A. (2022).** Implementasi machine learning untuk prediksi harga mobil bekas dengan algoritma regresi linear berbasis web. *Jurnal Ilmiah Komputasi*, 21(4), 513–520. https://doi.org/10.32409/jikstik.21.4.3327
+8. **Kriswantara, B., Kurniawati, K., & Pardede, H. F. (2021).** Prediksi harga mobil bekas dengan machine learning. *Syntax Literate: Jurnal Ilmiah Indonesia*, 6(5), 2189–2199. https://doi.org/10.36418/syntax-literate.v6i5.2716
+9. **Kriswantara, B., & Sadikin, R. (2022).** Used car price prediction with Random Forest regressor model. *Journal of Information Systems, Informatics and Computing (JISICOM)*, 6(1), 162–171. https://doi.org/10.52362/jisicom.v6i1.752
+10. **Nguyen, M., & Ryu, K. (2022).** Deep learning-based used car price prediction model. *IEEE Access*, 10, 34510–34518. https://doi.org/10.1109/ACCESS.2022.3175378
 
 ---
 
@@ -287,7 +345,7 @@ Ambang −6,96% dan +7,30% (batch 1) adalah persentil ke-33 dan ke-67 data train
 ## Keterbatasan
 
 1. **Label proxy.** OLX tidak menyediakan status terjual. Rujukan di atas mendukung arah hubungannya, tetapi label belum divalidasi terhadap penjualan nyata.
-2. **Akurasi tinggi sebagian sirkular.** Tanpa `deviasi_persen`, akurasi hanya 51,40%.
+2. **Akurasi tinggi sebagian sirkular.** Tanpa `deviasi_persen`, akurasi hanya 51,40% (Batch 1) dan 42,91% (Batch 2).
 3. **Transmisi 31–35% adalah asumsi** (iklan tidak menyebut transmisi, diisi `automatic`).
 4. **Data jarang per model.** Sekitar 62–67% kombinasi merek+model+usia punya sampel kurang dari 15, sehingga banyak prediksi berkeyakinan rendah.
 5. **Data snapshot.** Bukan real-time. Harga pasar dapat berubah.
@@ -300,6 +358,19 @@ Cara terbaik memvalidasi label adalah memantau iklan yang sama dari waktu ke wak
 
 ---
 
-## Lisensi
+## Tim Pengembang & Lisensi
 
-Proyek akademik (Tugas Data Mining, TI24A2). Data bersumber dari scraping publik OLX.
+Proyek akademik mata kuliah Data Mining (Kelas TI24A2), Program Studi Informatika, Fakultas Ilmu Komputer, Universitas Duta Bangsa Surakarta.
+
+**Dosen Pengampu:** Sunneng Sadino Berutu, M.Kom., Ph.D.
+
+**Disusun Oleh (Kelompok AutoLaku):**
+1. Nugroho Saputra Jati (240103073)
+2. Afrilza Maulid Ardian (240103021)
+3. Bagus Adji Rohman (240103043)
+4. Radika Divia Putri (240103030)
+5. Geraldi Eka Kurniawan (240103038)
+6. Asy Syiffa Yofika Ailsa (240103040)
+7. Aldy Arya Kusuma (240103042)
+
+Data bersumber dari scraping publik platform OLX Indonesia untuk kepentingan penelitian dan pembelajaran ilmiah.

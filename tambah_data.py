@@ -372,6 +372,7 @@ def pastikan_guidebook_pdf(target_path: str = os.path.join("static", "guidebook_
     file tersebut langsung dipakai. Jika belum ada, sistem membuatkan PDF Guidebook resmi AutoLaku.
     """
     kandidat_ada = [
+        os.path.join("laporan&guidebook", "Guide_Book_AutoLaku_v1.0.pdf"),
         "guidebook.pdf",
         "guidebook_autolaku.pdf",
         "Guidebook_AutoLaku.pdf",
