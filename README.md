@@ -22,16 +22,56 @@ Sistem menghitung harga wajar dari data iklan OLX, mengukur seberapa jauh rencan
 
 ---
 
-## 📜 Sertifikasi Hak Cipta, Dokumentasi & Publikasi Ilmiah
+## 📜 Sertifikasi Hak Cipta & Dokumen Resmi
 
 AutoLaku telah resmi terdaftar dan memperoleh **Surat Pencatatan Ciptaan** dari **Direktorat Jenderal Kekayaan Intelektual (DJKI), Kementerian Hukum Republik Indonesia**, didukung oleh Dokumentasi & Buku Panduan (*Guidebook*) resmi, serta Laporan Penelitian Ilmiah komprehensif.
 
 <div align="center">
 
-| 🏛️ Sertifikat Hak Cipta (DJKI Kemenkumham RI) | 📖 Buku Panduan & Dokumentasi Resmi | 📑 Laporan Lengkap Proyek & Jurnal |
+<a href="public/SuratCiptaan_EC002026231775.pdf" target="_blank">
+  <img src="public/sertifikat_hki_preview.jpg" alt="Sertifikat Hak Cipta AutoLaku" width="380" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"/>
+</a>
+
+<br>
+
+| 🏛️ Sertifikat Hak Cipta DJKI | 📖 Dokumen HAKI & Guidebook | 📑 Laporan Lengkap Data Mining |
 | :---: | :---: | :---: |
-| <a href="public/SuratCiptaan_EC002026231775.pdf" target="_blank"><img src="public/sertifikat_hki_preview.jpg" alt="Sertifikat Hak Cipta AutoLaku" width="260"/></a> | <a href="public/Dokumentasi_AutoLaku.pdf" target="_blank"><img src="public/preview_ui_hasil.png" alt="Dokumentasi AutoLaku" width="260"/></a> | <a href="public/Laporan_AutoLaku.pdf" target="_blank"><img src="public/preview_audit_model.jpg" alt="Laporan Ilmiah AutoLaku" width="260"/></a> |
-| **No. Permohonan:** `EC002026231775`<br>**Jenis Ciptaan:** Program Komputer<br>📅 **Tanggal Terbit:** 16 November 2026<br><a href="public/SuratCiptaan_EC002026231775.pdf">📄 <b>Unduh Surat Ciptaan (PDF)</b></a> | **Dokumentasi & Guidebook v1.0**<br>Petunjuk Scraping, Pipeline, & Retrain<br>🔖 **Format:** PDF Panduan Resmi<br><a href="public/Dokumentasi_AutoLaku.pdf">📄 <b>Unduh Dokumentasi (PDF)</b></a> | **Laporan Ilmiah Data Mining**<br>Sitasi 10 Jurnal (SINTA & Scopus)<br>📊 **Format:** PDF Laporan Akademik<br><a href="public/Laporan_AutoLaku.pdf">📄 <b>Unduh Laporan (PDF)</b></a> |
+| **No. Permohonan:** `EC002026231775`<br>**Jenis Ciptaan:** Program Komputer<br>📅 **Tanggal Terbit:** 16 November 2026<br><a href="public/SuratCiptaan_EC002026231775.pdf">📄 <b>Unduh Sertifikat (PDF)</b></a> | **Buku Panduan & HAKI v1.0**<br>Petunjuk Scraping, Pipeline & Retraining<br>🔖 **Format:** Dokumen Resmi<br><a href="public/DokumenHaki_AutoLaku.pdf">📄 <b>Unduh Dokumen (PDF)</b></a> | **Laporan Ilmiah Proyek**<br>Sitasi 10 Jurnal (SINTA & Scopus)<br>📊 **Format:** Laporan Akademik<br><a href="public/Laporan_AutoLaku.pdf">📄 <b>Unduh Laporan (PDF)</b></a> |
+
+</div>
+
+---
+
+## 📈 Visualisasi Hasil Output & Evaluasi Model
+
+Berikut adalah grafik output visual dari tahapan pemodelan, evaluasi data uji (*test set*), dan seleksi fitur:
+
+<div align="center">
+
+### 1. Komparasi 6 Algoritma & Pembuktian Uji Ablasi
+
+| 📊 Komparasi 6 Model Klasifikasi (dengan Deviasi Harga) | 📉 Uji Ablasi: Performa Model (tanpa Deviasi Harga) |
+| :---: | :---: |
+| <img src="output_klasifikasi_02-11-2026/2_komparasi_dengan_deviasi.png" alt="Komparasi Model dengan Deviasi" width="460"/> | <img src="output_klasifikasi_02-11-2026/1_komparasi_tanpa_deviasi.png" alt="Uji Ablasi tanpa Deviasi" width="460"/> |
+| *Random Forest mengungguli model lain dengan F1-Macro 98,73% dan akurasi 98,49% tanpa overconfidence.* | *Membuktikan deviasi harga sebagai prediktor kunci; akurasi turun drastis ke ~42% tanpa fitur ini.* |
+
+<br>
+
+### 2. Matriks Konfusi & Tingkat Kepentingan Fitur (*Feature Importance*)
+
+| 🎯 Matriks Konfusi pada Data Uji (Test Set) | 🔍 Tingkat Kepentingan Fitur (Random Forest) |
+| :---: | :---: |
+| <img src="output_klasifikasi_02-11-2026/3_confusion_matrix_test.png" alt="Confusion Matrix Test Set" width="460"/> | <img src="output_klasifikasi_02-11-2026/7_feature_importance.png" alt="Feature Importance" width="460"/> |
+| *Evaluasi prediksi pada kelas Cepat, Sedang, dan Lambat dengan tingkat kesalahan klasifikasi minimal.* | *Deviasi harga wajar memiliki kontribusi terbesar (55,66%), didukung jarak tempuh dan atribut iklan.* |
+
+<br>
+
+### 3. Evaluasi Model Regresi Harga Wajar & Distribusi Label
+
+| 📉 Analisis Residual Model Regresi Harga Wajar | ⚖️ Distribusi Kuantil Tertile (Data Train vs Test) |
+| :---: | :---: |
+| <img src="output_pelabelan/1_analisis_residual.png" alt="Analisis Residual Regresi" width="460"/> | <img src="output_pelabelan/3_distribusi_label_train_test.png" alt="Distribusi Label Train vs Test" width="460"/> |
+| *Distribusi galat prediksi harga wajar terpusat simetris di sekitar nol, menandakan regresi objektif.* | *Pembagian kelas seimbang pada data latih (33,3% per kelas) berbasis batas kuantil Q33 dan Q67.* |
 
 </div>
 
