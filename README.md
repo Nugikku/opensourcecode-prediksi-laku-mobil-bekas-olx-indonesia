@@ -29,7 +29,7 @@ AutoLaku telah resmi terdaftar dan memperoleh **Surat Pencatatan Ciptaan** dari 
 <div align="center">
 
 <a href="public/SuratCiptaan_EC002026231775.pdf" target="_blank">
-  <img src="public/sertifikat_hki_preview.jpg" alt="Sertifikat Hak Cipta AutoLaku" width="380" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"/>
+  <img src="public/SuratCiptaan_EC002026231775_preview.jpg" alt="Sertifikat Hak Cipta AutoLaku" width="380" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"/>
 </a>
 
 <br>
